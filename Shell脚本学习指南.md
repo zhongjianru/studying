@@ -118,24 +118,24 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 * 获取系统登录用户
   ```
-  > who
+  $ who
   ```
 
 * 计算登录用户个数
   ```
-  > who | wc -l
+  $ who | wc -l
   # 将 who 的输出通过管道 | 成为 wc 的输入（wc-字数计算）
   ```
 
 * 将管道转变成独立命令
   
   ```
-  > cat > nusers            # 建立文件，使用 cat 复制终端的输入
+  $ cat $ nusers            # 建立文件，使用 cat 复制终端的输入
   #! bin/sh                 # 使用该目录下的 shell 来执行程序
   who | wc -l               # 程序内容
   ^D                        # end-of-file
-  > chmod +x nusers         # 让文件拥有执行权限
-  > ./nusers                # 执行测试
+  $ chmod +x nusers         # 让文件拥有执行权限
+  $ ./nusers                # 执行测试
   6                         # 输出结果
   ```
 
@@ -151,9 +151,9 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 * 命令与参数
   ```
-  > cd work; ls -lt whizprog.c  # 短选项：命令 -参数（多个参数可合并）
-  > cd whizprog-1.1
-  > patch --verbose --backup -p1 < /tmp/whizprog-1.1-1.2-patch  # 长选项：已被纳入 POSIX 标准
+  $ cd work; ls -lt whizprog.c  # 短选项：命令 -参数（多个参数可合并）
+  $ cd whizprog-1.1
+  $ patch --verbose --backup -p1 < /tmp/whizprog-1.1-1.2-patch  # 长选项：已被纳入 POSIX 标准
   # ; 可用于分割同一行里的多条命令
   # & 在后台执行前面的命令（不用等到该命令完成即可执行下一个命令）
   ```
@@ -169,9 +169,9 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   3. 变量赋值方式：变量名称=新值（中间没有空格）
   4. 变量取出方式：变量a=$变量b
   ```
-  > first=isaac; middle=bashevis; last=singer  # 单行可进行多次赋值
-  > fullname="isaac bashevis singer"  # 值中包含空格时需使用引号
-  > oldname=$fullname  # 此处不需要引号
+  $ first=isaac; middle=bashevis; last=singer  # 单行可进行多次赋值
+  $ fullname="isaac bashevis singer"  # 值中包含空格时需使用引号
+  $ oldname=$fullname  # 此处不需要引号
   ```
 
 * 简单的 echo 输出
@@ -179,14 +179,14 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   2. UNIX 各版本间互不相同的行为模式使得 echo 的可移植性变得很困难
   3. 比较复杂的输出，推荐使用 printf
   ```
-  > echo "Now is the time for all good man"
+  $ echo "Now is the time for all good man"
   ```
 
 * 华丽的 printf 输出
   1. printf 不像 echo 自动提供一个换行符号，需要显示指定换行符 \n
   2. 格式声明：以 % 开头，用来控制相应参数的输出
   ```
-  > printf "The first program always prints '%s, %s!'\n" Hello world
+  $ printf "The first program always prints '%s, %s!'\n" Hello world
   ```
 
 * 基本的 I/O 重定向
@@ -201,21 +201,21 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
   ```
   # program < file 改变标准输入
-  > tr -d '\r' < dos-file.txt
+  $ tr -d '\r' < dos-file.txt
 
-  # program > file 改变标准输出（目标文件不存在时会新建一个，目标文件已存在时会被覆盖）
-  > tr -d '\r' < dos-file.txt > UNIX-file.txt
+  # program $ file 改变标准输出（目标文件不存在时会新建一个，目标文件已存在时会被覆盖）
+  $ tr -d '\r' < dos-file.txt $ UNIX-file.txt
 
-  # 可以把 < 和 > 想象成数据的漏斗：数据会从大的一端进入，从小的一端出来
+  # 可以把 < 和 $ 想象成数据的漏斗：数据会从大的一端进入，从小的一端出来
 
-  # program >> file 附加到文件
-  > for f in dos-file*.txt
-  > do
-  >     tr -d '\r' < $f >> big-UNIX-file.txt
-  > done
+  # program >$ file 附加到文件
+  $ for f in dos-file*.txt
+  $ do
+  $     tr -d '\r' < $f >$ big-UNIX-file.txt
+  $ done
 
   # program1 | program2 建立管道（前一个的标准输出作为后一个的标准输入）
-  > tr -d '\r' < dos-file.txt | sort > UNIX-file.txt
+  $ tr -d '\r' < dos-file.txt | sort $ UNIX-file.txt
 
   # tr [options] source-char-list replace-char-list
   # options: -c -C -d -s
@@ -226,17 +226,17 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   ```
   # 1、/dev/null（位桶）：可以作为命令的退出状态
   # 当程序将数据写到此文件时，会认为它已经成功完成写入数据的操作，但实际上什么事都没做
-  > if grep pattern myfile > /dev/null
-  > then ..  # 找到模式时
-  > else ..  # 找不到模式时
-  > fi
+  $ if grep pattern myfile $ /dev/null
+  $ then ..  # 找到模式时
+  $ else ..  # 找不到模式时
+  $ fi
 
   # 2、/dev/tty（自动重定向到终端，再与程序结合）
   # 在程序必须读取人工输入（例如密码）时特别有用，此外用它来产生错误信息也很方便
-  > printf "Enter new password:"  # 提示输入
-  > stty -echo                    # 关闭自动打印输入字符的功能
-  > read pass < /dev/tty          # 读取密码（一般输入两次密码以确认修改）
-  > stty echo                     # 别忘了打开自动打印输入字符的功能
+  $ printf "Enter new password:"  # 提示输入
+  $ stty -echo                    # 关闭自动打印输入字符的功能
+  $ read pass < /dev/tty          # 读取密码（一般输入两次密码以确认修改）
+  $ stty echo                     # 别忘了打开自动打印输入字符的功能
   ```
 
 ##### 基本命令查找
@@ -244,43 +244,43 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   ```
   # Shell 会沿着查找路径 $PATH 来寻找命令
   # $PATH 是一个以冒号分隔的目录列表，可以在列表指定的目录下找到所要执行的命令
-  > echo $PATH
-  > /bin:/usr/bin:usr/X11R6/bin:/usr/local/bin
+  $ echo $PATH
+  $ /bin:/usr/bin:usr/X11R6/bin:/usr/local/bin
 
   # bin 目录用来保存可执行文件
   # 要让修改永久生效，在 .profile 文件中把你的 bin 目录加入 $PATH，每次登陆 Shell 都会读取该文件
-  > cd                      # 切换到 home 目录
-  > mkdir bin               # 建立个人 bin 目录
-  > mv nusers bin           # 将脚本放入该目录
-  > PATH=$PATH:$HOME/bin    # 将个人 bin 目录附加到 PATH
-  > nusers                  # Shell 有找到并执行它
+  $ cd                      # 切换到 home 目录
+  $ mkdir bin               # 建立个人 bin 目录
+  $ mv nusers bin           # 将脚本放入该目录
+  $ PATH=$PATH:$HOME/bin    # 将个人 bin 目录附加到 PATH
+  $ nusers                  # Shell 有找到并执行它
   ```
 
 ##### 访问 Shell 脚本的参数
 
   ```
   # 查找 betsy 用户的命令
-  > who | grep betsy
+  $ who | grep betsy
 
   # 查找特定用户的脚本，脚本的第一个参数就是我们要找的用户名称
-  > cat > finduser          # 建立新文件
+  $ cat $ finduser          # 建立新文件
   #! /bin/sh
   who | grep $1             # $1 表示第一个参数
   ^D                        # 以 End-of-file 结尾
-  > chmod +x finduser       # 设置执行权限
-  > ./finduser betsy        # 测试：寻找 betsy
-  > mv finduser $HOME/bin   # 将这个文件存进自己的 bin 目录
+  $ chmod +x finduser       # 设置执行权限
+  $ ./finduser betsy        # 测试：寻找 betsy
+  $ mv finduser $HOME/bin   # 将这个文件存进自己的 bin 目录
   ```
 
 ##### 简单的执行跟踪
 
   ```
-  > sh -x nusers            # 打开执行跟踪功能
+  $ sh -x nusers            # 打开执行跟踪功能
   + who                     # Shell 会显示每个被执行到的命令
   + wc -l
 
-  > set -x                  # 打开执行跟踪功能
-  > set +x                  # 关闭执行跟踪功能
+  $ set -x                  # 打开执行跟踪功能
+  $ set +x                  # 关闭执行跟踪功能
   ```
 
 ##### 国际化与本地化
@@ -309,68 +309,68 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
   ```
   # 简单的 grep
-  > who | grep austen       # 查找用户 austen
+  $ who | grep austen       # 查找用户 austen
 
   # 正则表达式匹配范例
   # 匹配原则：从最左边开始，拓展至最长（longest leftmost)
-  > tolstoy                 # 位于一行上任何位置
-  > ^tolstoy                # 在开头
-  > tolstoy>                # 在结尾
-  > ^tolstoy>               # 正好包含，没有其他任何字符
-  > [Tt]olstoy              # T 或 t
-  > tol.toy                 # . 表示一个字符
-  > tol.*toy                # .* 表示 0 或多个字符
+  $ tolstoy                 # 位于一行上任何位置
+  $ ^tolstoy                # 在开头
+  $ tolstoy$                # 在结尾
+  $ ^tolstoy$               # 正好包含，没有其他任何字符
+  $ [Tt]olstoy              # T 或 t
+  $ tol.toy                 # . 表示一个字符
+  $ tol.*toy                # .* 表示 0 或多个字符
 
   # 字符集(需要在方括号表达式内使用)
-  > [[:alnum:]]             # 字母和数字
-  > [[:alpha:]]             # 字母
-  > [[:balnk:]]             # 空格 space 与定位符 tab
-  > [[:cntrl:]]             # 控制字符
-  > [[:digit:]]             # 数字
-  > [[:graph:]]             # 非空格字符 nonspace
-  > [[:lower:]]             # 小写字母
-  > [[:print:]]             # 可显示字符
-  > [[:punct:]]             # 标点符号
-  > [[:space:]]             # 空白字符 whitespace
-  > [[:upper:]]             # 大写字母
-  > [[:sdigit:]]            # 十六进制数字
+  $ [[:alnum:]]             # 字母和数字
+  $ [[:alpha:]]             # 字母
+  $ [[:balnk:]]             # 空格 space 与定位符 tab
+  $ [[:cntrl:]]             # 控制字符
+  $ [[:digit:]]             # 数字
+  $ [[:graph:]]             # 非空格字符 nonspace
+  $ [[:lower:]]             # 小写字母
+  $ [[:print:]]             # 可显示字符
+  $ [[:punct:]]             # 标点符号
+  $ [[:space:]]             # 空白字符 whitespace
+  $ [[:upper:]]             # 大写字母
+  $ [[:sdigit:]]            # 十六进制数字
 
   # 匹配一般字符
-  > a                       # 匹配字符 a 本身
-  > \                       # \ 转义字符
-  > .                       # . 任一字符
-  > c[aeiouy]t              # [] 方括号表达式：匹配方括号内任一字符
-  > [0-9]                   # 所有数字
-  > [0-9a-fA-F]             # 所有十六进制数字
+  $ a                       # 匹配字符 a 本身
+  $ \                       # \ 转义字符
+  $ .                       # . 任一字符
+  $ c[aeiouy]t              # [] 方括号表达式：匹配方括号内任一字符
+  $ [0-9]                   # 所有数字
+  $ [0-9a-fA-F]             # 所有十六进制数字
 
   # 排序元素 [..]
-  > [ab[.ch.]de]            # 匹配字符 a、b、d、e 或者成对的 ch
+  $ [ab[.ch.]de]            # 匹配字符 a、b、d、e 或者成对的 ch
 
   # 等价字符集
-  > [a[=e=]iouy]            # 所有小写英文字母元音，以及字母 è 和 é 等
+  $ [a[=e=]iouy]            # 所有小写英文字母元音，以及字母 è 和 é 等
 
   # 后向引用：在寻找重复字以及匹配引号时特别好用
   # 第一步：将子表达式包围在 \( 和 \) 里面，单个模式里可包括最多 9 个子表达式，且可为嵌套结构
   # 第二步：在同一模式之后使用 \digit，即匹配于第 n 个先前方括号内子表达式匹配成功的字符（1 ≤ n ≤ 9）
-  > \(ab\)\(cd\)[def]*\2\1              # abcd 开头且 cdab 结尾
-  > \(why\).*\1                         # 一行里重现两个 why
-  > \([[:alpha:]_][[:alnum:]_]*\)=\1;   # 简易 C/C++ 赋值语句
-  > \(["']\).*\1                        # 以单引号或者双引号括起来的字，例如 'foo' 或 "bar"
+  $ \(ab\)\(cd\)[def]*\2\1              # abcd 开头且 cdab 结尾
+  $ \(why\).*\1                         # 一行里重现两个 why
+  $ \([[:alpha:]_][[:alnum:]_]*\)=\1;   # 简易 C/C++ 赋值语句
+  $ \(["']\).*\1                        # 以单引号或者双引号括起来的字，例如 'foo' 或 "bar"
 
   # 单个表达式匹配多字符
   # 1、修饰符
-  > ab*c                    # 0个或多个
-  > ab+c                    # 1个或多个
+  $ ab*c                    # 0个或多个
+  $ ab+c                    # 1个或多个
   # 2、区间表达式
-  > a\{n\}                  # n个a
-  > a\{n,\}                 # 至少n个a
-  > a\{n,m\}                # n-m个a
+  $ a\{n\}                  # n个a
+  $ a\{n,\}                 # 至少n个a
+  $ a\{n,m\}                # n-m个a
 
   # 文本匹配锚点
   # 1、脱字符号：^，匹配开头
   # 2、货币符号：$，匹配结尾
-  > ^>                      # 同时使用，用来匹配空字符串或行列
-  > foo.c | grep -v '^$'    # 删除空行（v选项用来显示所有不匹配于模式的行）
+  $ ^$                      # 同时使用，用来匹配空字符串或行列
+  $ foo.c | grep -v '^$'    # 删除空行（v选项用来显示所有不匹配于模式的行）
 
   # 运算符优先级（从高到低）
   # 1、[..] [==] [::]       # 用于字符排序的方括号符号
@@ -379,20 +379,20 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   # 4、\(\) \digit          # 子表达式与向后引用
   # 5、* \{ \}              # 前置单个字符重现的正则表达式
   # 6、无符号                # 连续
-  # 7、^ >                  # 锚点
+  # 7、^ $                  # 锚点
 
   # 在文本文件里进行替换：使用 sed（流编辑器）
   # 1、用正则表达式查找并修改文本
-  > sed 's/:.*//' /etc/passwd |           # 删除第一个冒号之后的所有东西
-  >  sort -u                              # 排序列表并删除重复部分
+  $ sed 's/:.*//' /etc/passwd |           # 删除第一个冒号之后的所有东西
+  $  sort -u                              # 排序列表并删除重复部分
   # 2、插入命令
-  > find /home/tolstoy -type d -print  |  # 寻找所有目录
-  >  sed 's;/home/tolstoy/;/home/lt/;' |  # 修改名称；注意这里使用分号作为定界符
-  >   sed 's/^/mkdir /'                |  # 插入 mkdir 命令
-  >    sh -x                           |  # 以 Shell 跟踪模式执行
+  $ find /home/tolstoy -type d -print  |  # 寻找所有目录
+  $  sed 's;/home/tolstoy/;/home/lt/;' |  # 修改名称；注意这里使用分号作为定界符
+  $   sed 's/^/mkdir /'                |  # 插入 mkdir 命令
+  $    sh -x                           |  # 以 Shell 跟踪模式执行
   ```
 
-  ##### 字段处理
+##### 字段处理
   
   ```
   # 在文本文件下，一行表示一条记录，在一行内用来分隔字符的方法：
@@ -403,7 +403,7 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   # tolstoy:x:2076:10:Leo Tolstoy:/home/tolstoy:/bin/bash
 
   # 选定字段：cut 命令（-d设置定界符，-f设置字段范围，最后指定文件路径）
-  > cut -d : -f 1,5 /etc/passwd           # 显示系统上每个用户的登陆名称及其姓名（即第1、5个字段）
+  $ cut -d : -f 1,5 /etc/passwd           # 显示系统上每个用户的登陆名称及其姓名（即第1、5个字段）
   # cut -d : -f 6   /etc/passwd           # 取出根目录
   # ls -l | cut -c 1-10                   # 取出ls -l命令输出结果中的文件权限字段
 
@@ -412,32 +412,118 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   #! /bin/sh
   # merge-sales.sh
   # 删除注释并排序数据文件
-  > sed '/^#/d' quotas | sort > quotas.sorted
-  > sed '/^#/d' sales  | sort > sales.sorted
+  $ sed '/^#/d' quotas | sort $ quotas.sorted
+  $ sed '/^#/d' sales  | sort $ sales.sorted
   # 以第一个键值（业务员名字）作结合，将结果产生至标准输出
-  > join quotas.sorted sales.sorted
+  $ join quotas.sorted sales.sorted
   # 删除缓存文件
-  > rm quotas.sorted sales.sorted
+  $ rm quotas.sorted sales.sorted
 
   # 重新编排字段：awk
   # 1、基本架构：pattern { action }
   # 2、字段：awk 读取输入记录，并自动将各个记录切分为字段（每条记录的字段数目储存到内建变量NF）
-  > awk '{ print $1 }'                    # 打印第一个字段（未指定pattern）
-  > awk '{ print $2, $5 }'                # 打印第二个与第五个字段（未指定pattern）
-  > awk '{ print $1, $NF }'               # 打印第一个与最后一个字段（未指定pattern）
-  > awk 'NF > 0 { print $0 }'             # 打印非空行（指定pattern与action），编号0表示整条记录
-  > awk 'NF > 0'                          # 未指定action则默认为打印
+  $ awk '{ print $1 }'                    # 打印第一个字段（未指定pattern）
+  $ awk '{ print $2, $5 }'                # 打印第二个与第五个字段（未指定pattern）
+  $ awk '{ print $1, $NF }'               # 打印第一个与最后一个字段（未指定pattern）
+  $ awk 'NF $ 0 { print $0 }'             # 打印非空行（指定pattern与action），编号0表示整条记录
+  $ awk 'NF $ 0'                          # 未指定action则默认为打印
   # 3、设置字段分隔符
-  > awk -F: '{ print $1, $5 }' /etc/passwd  # 设置分隔符为冒号，并输出第1、5个字段（登陆名称和用户姓名）
+  $ awk -F: '{ print $1, $5 }' /etc/passwd  # 设置分隔符为冒号，并输出第1、5个字段（登陆名称和用户姓名）
   # 4、打印行
-  > awk -F : '{ print "User", $1, "is really", $5 }' /etc/passwd
-  > awk -F : '{ printf "User %s is really %s\n", $1, $5}' /etc/passwd
+  $ awk -F : '{ print "User", $1, "is really", $5 }' /etc/passwd
+  $ awk -F : '{ printf "User %s is really %s\n", $1, $5}' /etc/passwd
   # 5、起始与清除模式
-  > awk 'BEGIN { FS = ":" ; OFS = "**" }
-  > { print $1, $5 }' /etc/passwd
+  $ awk 'BEGIN { FS = ":" ; OFS = "**" }
+  $ { print $1, $5 }' /etc/passwd
   ```
 
 
-  #### 第四章 文本处理工具
+#### 第四章 文本处理工具
 
+##### 排序文本
+
+  ```
+  # 行的排序
+  $ LC_ALL=C sort french-english          # 以严格的字节顺序排序文件
+
+  # 以字段排序
+  $ sort -t: -k1,1 /etc/passwd            # 以冒号隔开的第一个字符（用户名称）排序
+  $ sort -t: -k3nr /etc/passwd            # 以字段三中的数值类型反向排序
+  $ sort -t: -k4n -k3n /etc/passwd        # 先以字段四数值排序，再以字段三数值排序
+  $ sort -t: -k4n -u /etc/passwd          # 以唯一的字段四数值排序（相同排序时只输出一条）
+
+  # 文本块排序（先将文本块进行合并，再排序）
+  # 1、在地址数据文件里的管道
+  $ cat my-friends |
+  # 2、转换地址为单行（gsub全局性替换）
+  $  awk -v RS="" '{ gsub{"\n", "^Z"}; print }' |
+  # 3、排序地址数据，忽略大小写
+  $   sort -f |
+  # 4、恢复行结构
+  $    awk -v ORS="\n\n" '{ gsub{"^Z" ,"\n"}; print }' |
+  # 5、删除标记行
+  $     grep -v '# SORTKEY'
+  ```
+
+##### 删除重复
+
+  ```
+  # uniq 命令
+  $ sort latin-numbers | uniq             # 显示唯一的、排序后的记录
+  $ sort latin-numbers | uniq -c          # 计数唯一的、排序后的记录
+  $ sort latin-numbers | uniq -d          # 仅显示重复的记录
+  $ sort latin-numbers | uniq -u          # 仅显示未重复的记录
+  ```
+
+##### 重新格式化段落
+
+  ```
+  # fmt 命令
+  # 1、重新格式化 20 个字典单词
+  $ sed -n -e 9991,10010p /usr/dict/words | fmt
+  # 2、重新将 10 个单词格式化为短的行
+  $ sed -n -e 9995,10004p /usr/dict/words | fmt -w 30
+  # 3、仅重新格式化长的行（长度大于10）
+  $ fmt -s -w 10 << CONTENT_OF_TEXT
+  ```
+
+##### 计算行数、字数以及字符数
+
+  ```
+  # wc 命令
+  $ echo Hello World | wc                 # 字符计数报告
+  $ wc /etc/passwd /etc/group             # 计算两个文件里的数据
+  ```
+
+##### 打印
+
+  ```
+  # lp 命令（打印）
+  # 1、Berkeley 风格
+  $ lpr -Plcb102 sample.ps                # 将 PostScript 文件传给打印队列lcb102
+  $ lpq -Plcb102                          # 查看该打印队列的状态
+  $ lprm -Plcb102 81352                   # 停止该进程
+
+  # 2、System V 风格
+  $ lp -d lcb102 sample.ps                # 将 PostScript 文件传给打印队列lcb102
+  $ lpstat -t lcb102                      # 查看该打印队列的状态
+  # cancel lcb102-81352                   # 停止该进程
+
+  # pr 命令（将文本文件编页，供打印用）
+  # 1、保证每页页标题都起始于新的一页
+  $ pr -f -160 -o10 -w65 file(s) | lp
+  # 2、将 26 个单词格式化为 5 栏
+  $ sed -n -e 19000,19025p /usr/dict/words | pr -c5 -t
+  ```
+
+##### 提取开头或结尾数行
+
+  ```
+  # 提取开头n行：head -n n
+  # 提取结尾n行：tail -n n
+  $ tail -n 25 -f /var/log/messages       # 观察不断成长的系统信息日志（f选项不会中断）
+  ```
+
+
+#### 第五章 管道的神奇魔力
 

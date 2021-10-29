@@ -527,3 +527,102 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 #### 第五章 管道的神奇魔力
 
+##### 从结构化文本文件中提取数据
+
+  ```
+  #! /bin/sh
+  # 过滤 /etc/passwd 这类格式的输入流，并从此数据衍生出办公室名录
+
+  # 1、设置文件权限
+  $ umask 077                             # 限制临时性文件只有我们能够访问
+
+  # 2、定义变量来表示临时文件
+  $ PERSON=/tmp/pd.key.person.$$          # 具有唯一性的临时文件名
+  $ OFFICE=/tmp/pd.key.office.$$
+  $ TELEPHONE=/tmp/pd.key.telephone.$$
+  $ USER=/tmp/pd.key.user.$$
+
+  # 3、工作终止
+  $ trap "exit 1"                         # 无论是正常或异常终止，都要删除临时文件
+  $ trap "rm -f $PERSON $OFFICE $ TELEPHONE $USER"
+
+  # 4、读取标准输入放入临时文件，并进行处理
+  $ awk -F: '{ print $1 ":" $5 }' > $USER
+  $ sed -e 's=/.*==' \
+  $     -e 's=^\([^:]*\}:\{.*\} \([^]*\)=\1:\3, \2=' <$USER | sort >$PERSON
+
+  # 5、重新格式化输出，配合制表符 tab 分隔每个字段
+  $ join -t: $PERSON $OFFICE |
+  $     join -t: - $ TELEPHONE |
+  $         cut -d: -f 2- |
+  $             sort -t: -k1,1 -k2,2 -k3,3
+  $                 awk -F: '{ printf{"%-39s\t%s\t%s\n", $1, $2, $3} }'
+  ```
+
+##### 针对 Web 的结构型数据
+
+  ```
+  <TABLE>
+      <TR>
+          <TD> Jones, Adrian W. </TD>
+          <TD> 555-0123 </TD>
+          <TD> OSD211 </D>
+      </TR>
+  </TABLE>
+  ```
+
+##### 文字解谜好帮手
+
+  ```
+  #! /bin/sh
+  # 通过一对单词列表，进行类似 egrep(1) 的模式匹配
+  # 语法：puzzle-help egrep-pattern [word-list-files]
+
+  $ FILES="
+  $         /usr/dict/words
+  $         /usr/share/dict/words
+            ...
+  $       "
+  $ pattern="$1"
+  $ egrep -h -i "$pattern" $FILES 2> /dev/null | sort -u -f
+  # -h 最后结果不要显示文件名，-i 忽略字母大小写，2> /dev/null 丢弃标准错误信息的输出
+
+  # 以 b 开头，中间 5 个字符，加上 x 或 z，再加 3 个字符
+  $ puzzle-help '^b.....[xz]...$' | fmt
+  # 每行有 6 个辅音字母的单词
+  $ puzzle-help '[^aeiouy]{6}' /usr/dict/words
+  ```
+
+##### 单词列表
+
+  ```
+  #! /bin/sh
+  # 从标准输入读取文本流，再输出出现频率最高的前 n 个单词的列表（默认为25）
+  # 附上出现频率的计数，按照这个计数从大到小排列
+  # 输出到标准输出
+  # 语法：wf [n]
+
+  $ tr -cs A-Za-z\' '\n' |                # 将非字母字符转换为换行符
+  $   tr A-Z a-z |                        # 所有大小字母转换为小写
+  $     sort |                            # 从小到大排序单词
+  $       uniq -c |                       # 去除重复，并显示其计数
+  $         sort -k1,1nr -k2 |            # 计数从大到小排序后，再按照单词从小到大排序
+  $           sed ${1:-25}q               # 显示前 n 行（默认为25）
+
+  # 用法：
+  # 1、使用 pr 重新格式化输出《哈姆雷特》，以每行 4 列显示
+  $ wf 12 < hamlet | pr -c4 -t w80
+  # 2、计算去除重复字后有多少单词出现在此剧中（需要一个足够大的值）
+  $ wf 999999 < hanlet | wc -l
+  # 3、最不常出现的字有哪些（仅显示一部分）
+  $ wf 999999 < hamlet | tail -n 12`| pr -c4 -t -w80
+  # 4、有几个单词是仅出现一次的
+  $ wf 999999 < hamlet | grep -c '^ *1.'
+  # 5、有几个单词是经常出现的核心单词
+  $ wf 999999 < hamlet | awk '$1 >= 5' | wc-l
+  ```
+
+
+#### 第六章 变量、判断、重复动作
+
+

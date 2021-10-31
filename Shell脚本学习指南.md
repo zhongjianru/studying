@@ -613,7 +613,7 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   # 1、使用 pr 重新格式化输出《哈姆雷特》，以每行 4 列显示
   $ wf 12 < hamlet | pr -c4 -t w80
   # 2、计算去除重复字后有多少单词出现在此剧中（需要一个足够大的值）
-  $ wf 999999 < hanlet | wc -l
+  $ wf 999999 < hamlet | wc -l
   # 3、最不常出现的字有哪些（仅显示一部分）
   $ wf 999999 < hamlet | tail -n 12`| pr -c4 -t -w80
   # 4、有几个单词是仅出现一次的
@@ -625,4 +625,127 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 #### 第六章 变量、判断、重复动作
 
+##### 变量与算术
+
+  ```
+  # 1、变量赋值与环境
+  # 给变量赋值
+  $ hours_per_day=24
+  $ seconds_per_hour=3600
+  $ days_per_week=7
+
+  # 将变量设为只读模式
+  $ readonly hours_per_day seconds_per_hour days_per_week
+
+  # 将新变量添加到环境中
+  $ PATH=$PATH:/usr/local/bin
+  $ export PATH
+
+  # 可以将赋值和命令结合到一起
+  $ readonly hours_per_day=24 seconds_per_hour=3600 days_per_week=7
+  $ export PATH=$PATH:/usr/local/bin
+
+  # 显示当前环境中的变量
+  $ export -p
+
+  # 变量可以添加到程序环境中，但是对 Shell 或者接下来的命令不会一直有效
+  $ PATH=$PATH:/usr/local/bin awk '...' file1 file2
+
+  # 删除环境变量 / 改变环境变量值
+  $ env -i PATH=$PATH HOME=$HOME LC_ALL=C awk '...' file1 file2
+
+  # 从执行的 Shell 中删除变量与函数
+  $ unset -v full_name                  # 删除变量
+  $ unset -f who_is_on                  # 删除函数
+
+  # 2、参数展开
+  # 2.1、展开运算符
+  $ reminder="Time to go to the dentist!"
+  $ sleep 120
+  $ echo $reminder
+  $ echo _${reminder}_
+
+  # 默认情况下未定义变量会展开为空字符串，这个时候就可能会导致灾难发生
+  $ rm -fr /$MYPROGRAM
+
+  # 2.2、替换运算符
+  # 冒号是可选的，如果没有冒号，则“存在且非空”改为“存在”（即用于值测试）
+  $ {varname:-word}                     # 如果varname存在且非空，则返回其值，否则返回word
+  $ {varname:=word}                     # 如果varname存在且非空，则返回其值，否则赋值为word并返回
+  $ {varname:+word}                     # 如果varname存在且非空，则返回word，否则返回null
+  $ {varname:?message}                  # 如果varname存在且非空，则返回其值，否则显示message并退出
+  
+  # 2.3、模式匹配运算符
+  $ {variable#pattern}                  # 如果模式匹配于变量开头，则删除匹配的最短部分，并返回剩下部分
+  $ {variable##pattern}                 # 如果模式匹配于变量开头，则删除匹配的最长部分，并返回剩下部分
+  $ {variable&pattern}                  # 如果模式匹配于变量结尾，则删除匹配的最短部分，并返回剩下部分
+  $ {variable&&pattern}                 # 如果模式匹配于变量结尾，则删除匹配的最长部分，并返回剩下部分
+
+  # 2.4、位置参数
+  $ echo first arg is $1                # 用正整数表示
+  $ echo tenth arg is ${10}             # 大于9时应该用花括号括起来
+  $ filename=${1:-/dev/tty}             # 将值测试与模式匹配运算符应用到位置参数
+
+  # 对参数的访问
+  $ $#                                  # 参数总数
+  $ $*/$&                               # 一次性表示所有的命令行参数
+  $ "$*"                                # 将所有参数视为单个字符串，等同于"$1 $2 ..."
+  $ "$@"                                # 将所有参数视为单独字符串，等同于"$1" "$2"
+
+  # 修改参数
+  $ set -- hello "hi there" greetings   # 设置位置参数（一共三个参数，但是有四个单词，--没有给选项）
+  $ echo there are $# total arguments   # 显示计数值
+
+  # 循环处理每一个参数
+  $ for i in $*                         # 1、在没有双引号的情况下，$*和$@是一样的（输出：四行，每个单词一行）
+  $ for i in "$*"                       # 2、加了双引号，表示一个字符串（输出：四个单词一行）
+  $ for i in "$@"                       # 3、加了双引号，保留真正的参数值（输出：三行，每个参数一行）
+  > do echo i is $1
+  > done
+  $ shift                               # 截去第一个参数
+  $ echo there are now $# arguments     # 现在第一个参数已经消失了
+
+  # 2.5、特殊变量
+  $ #                                   # 目前进程的参数个数
+  $ @                                   # 目前进程的命令行参数，置于双引号内时会展开为个别的参数
+  $ *                                   # 目前进程的命令行参数，置于双引号内时会展开为一单独参数
+  $ -                                   # 在引用时给予 Shell 的选项
+  $ ?                                   # 前一命令的退出状态
+  $ $                                   # Shell 进程的进程编号（process ID）
+  $ 0                                   # Shell 程序的名称
+  $ !                                   # 最近一个后台命令的进程编号
+  $ ENV                                 # 环境
+  $ HOME                                # 根目录（登陆）
+  $ IFS                                 # 内部作为分隔符的字段列表，一般为空格、制表符和换行
+  $ LANG                                # 当前 locale 的默认名称，其他的 LC_* 变量会覆盖其值
+  $ LC_ALL                              # 当前 locale 的名称，会覆盖其他 LANG 与其他 LC_* 变量
+  $ LC_COLLATE                          # 用来排序字符的当前 locale 名称
+  $ LC_CTYPE                            # 在模式匹配期间，用来确定字符类别的当前 locale 名称
+  $ LC_MESSAGES                         # 输出信息的当前语言的名称
+  $ LINENO                              # 刚执行过的行在脚本或函数内的行编号
+  $ NLSPATH                             # 在 $LC_MESSAGES(XSI) 所给定的信息语言里，信息目录的位置
+  $ PATH                                # 命令的查询路径
+  $ PPID                                # 输出信息的当前语言的名称
+  $ PS1                                 # 主要的命令提示字符串，默认为"$"
+  $ PS2                                 # 行继续的提示字符串，默认为"> "
+  $ PS4                                 # 以 sex -x 设置的执行跟踪的提示字符串，默认为"+ "
+  $ PWD                                 # 当前工作目录
+
+  # 3、算术展开（默认顺序为从左到右）
+  $ ++ --                               # 增加 / 减少，可前置也可放在末尾
+  $ + - ! ~                             # 一元的正号与负号；逻辑与位的取反
+  $ * / %                               # 乘法、除法、余数
+  $ + -                                 # 加法和减法
+  $ << >>                               # 向左位移、向右位移
+  $ < <= > >=                           # 比较
+  $ == !=                               # 相等、不等
+  $ &                                   # 位的 AND
+  $ ^                                   # 位的 Exclusive OR
+  $ |                                   # 位的 OR
+  $ &&                                  # 逻辑的 AND
+  $ ||                                  # 逻辑的 OR
+  $ ?:                                  # 条件表达式
+  $ = += -+ *= /= %= &= ^= <<= >>= |=   # 赋值运算符
+
+  ```
 

@@ -747,5 +747,186 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   $ ?:                                  # 条件表达式
   $ = += -+ *= /= %= &= ^= <<= >>= |=   # 赋值运算符
 
+  # 用法
+  $ echo $((3 && 4))                    # 真
+  $ $((x += 2))                         # 为 x 增加 2，并将结果存储到 x
+  $ echo $((i++))                       # 先返回原值，再执行自增
+  $ echo $((++i))                       # 先执行自增，再返回值
   ```
+
+##### 退出状态
+
+  ```
+  # 1、退出状态值
+  # 内置变量 ? 返回最近一次执行程序的退出状态（除 0 外其余状态都为失败）
+  $ echo $?                             # 输出退出状态
+  $ exit 42                             # 脚本会立即退出，并且返回状态值 42
+
+  # 2、if-elif-else-fi 语句
+  # 使用程序的退出状态，最简单的方法就是使用 if 语句
+  $ if grep pattern myfile > /dev/null
+  $ then ...
+  $ else ...
+  $ fi
+
+  # 3、逻辑的 NOT、AND 与 OR
+  $ if ! grep pattern myfile > /dev/null
+  $ if grep pattern1 myfile && grep pattern2 myfile
+  $ if grep pattern1 myfile || grep pattern2 myfile
+
+  # 4、test 命令
+  # 产生可使用的退出状态，不是一般输出
+  $ if test "$str1" = "$str2"             # 测试两个字符串是否相等
+  $ if [ -f "$file" ] && ! [ -w "$file" ] # file 存在且为一般文件，但不可写入
+  ```
+
+##### case 语句
+ 
+  ```
+  $ case $1 in                            # 判断命令选项
+  $ -f)
+  $   ...
+  $   ;;
+  $ -d | --directory
+  $   ...
+  $   ;;
+  $ *)
+  $   echo $1: uknown option >&2
+  $   exit
+  $ esac
+  ```
+
+##### 循环
+
+  ```
+  # 1、for 循环
+  $ for i in atlbrochure8.xml
+  $ do
+  $   echo $i
+  $   mv $i $i.old
+  $   sed 's/Atlanta/&, the capital of the South/' < $i.old > $i
+  $ done
+
+  # 2、while 与 until 循环
+  # while：只要 condition 成功退出，while 会继续循环
+  $ pattern=...
+  $ while [ -n "$string” ]
+  $ do
+  $   string=${string%pattern}
+  $ done
+
+  # until：只要 condition 未成功结束，untiil 则执行循环
+  # 等待某个用户登陆（每30秒确认一次）
+  $ printf "Enter username: "
+  $ read user
+  $ until who | grep "$user" > /dev/null
+  $ do
+  $   sleep 30
+  $ done
+
+  # 也可以将管道放入到 while 循环中，用来重复处理每一行的输入
+  $ 产生数据 |
+  $ while read name rank serial_no
+  $ do
+  $   ..
+  $ done
+
+  # 3、break 与 continue
+  # 等待某个用户登陆（每30秒确认一次）
+  $ printf "Enter username: "
+  $ read user
+  $ while true
+  $ do
+  $   if who | grep "$user" > /dev/null
+  $   then 
+  $     break
+  $   fi
+  $   sleep 30
+  $ done
+
+  # break 和 contine 都接受可选的数值参数，用来指出要中断或继续多少个被包含的循环
+  # 如果循环计数需要的是一个在运行时刻被计算的表达式，可以使用 $((...)) 表示
+  $ while condition1                    # 外部循环
+  $ do ...
+  $   while condition2                  # 内部循环
+  $     do ...
+  $       break 2                       # 中断外部循环
+  $     done
+  $ done
+  $ ...                                 # 在中断之后，继续执行这里的程序
+
+  # 4、shift 与选项的处理
+  # 用来处理命令行参数的时候，一次向左位移一位或更多位
+  $ file=  verbose=  quiet=  long=      # 将变量设置为空值
+  $ while [ $# -gt 0 ]                  # 执行循环，直到没有参数为止
+  $ do
+  $   case $1 in                        # 检查第一个参数
+  $   -f) file=$2                       # 移位退出 "-f"，使得结尾的 shift 得到在 $2 的值
+  $       shift
+  $       ;;
+  $   -v) verbose=true
+  $       quiet=
+  $       ;;
+  $   -q) quiet=true
+  $       verbose=true
+  $       ;;
+  $   -l) long=true
+  $       ;;
+  $   --) shift                         # 传统上，以 -- 结束选项
+  $       break
+  $       ;;
+  $   -*) echo $0: $1: unregnized option >&2
+  $       ;;
+  $   *)  break                         # 无选项参数，跳出循环
+  $       ;;
+  $   esac
+  $   shift                             # 设置下一个重复
+  $ done
+
+  # getopets 可以简化选项处理
+  $ file=  verbose=  quiet=  long=      # 将变量设置为空值
+  $ while getopts :f:val opt            # 第一个冒号是处理错误的方式
+  $ do
+  $   case $opt in
+  $   f)   file=$OPTARG
+  $        ;;
+  $   v)   verbose=true
+  $        quiet=
+  $        ;;
+  $   q)   quiet=true
+  $        verbose=true
+  $        ;;
+  $   l)   long=true
+  $        ;;
+  $   '?') echo "$0: invalid option -$OPTARG" >&2
+  $        echo "Usage: $0 [-f file] [-vql] [files ...]" >&2
+  $        exit 1
+  $        ;;
+  $   esac
+  $ done
+  $ shift $((OPTIND - 1))               # 删除选项，留下参数
+  ```
+
+##### 函数
+
+  ```
+  # wait_for_user --- 等待用户登陆
+  # 
+  # 语法：wait_for_user user [ sleeptime ]
+  $ wait_for_user () {
+  $   until who |grep "$1" > /dev/null
+  $   do
+  $     sleep ${2:-30}
+  $   done
+  $   return 0
+  $ }
+
+  # 引用方法
+  $ wait_for+user tolstoy               # 等待用户 tolstoy，每 30 秒检查一次
+  $ wait_for+user tolstoy 60            # 等待用户 tolstoy，每 60 秒检查一次
+  ```
+
+#### 第七章 输入/输出、文件与命令执行
+
+
 

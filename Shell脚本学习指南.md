@@ -922,11 +922,125 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
   $ }
 
   # 引用方法
-  $ wait_for+user tolstoy               # 等待用户 tolstoy，每 30 秒检查一次
+  $ wait_for+user tolstoy               # 等待用户 tolstoy，每 30 秒检查一次（默认）
   $ wait_for+user tolstoy 60            # 等待用户 tolstoy，每 60 秒检查一次
   ```
 
 #### 第七章 输入/输出、文件与命令执行
 
+##### 标准输入、标准输出与标准错误输出
 
+默认情况下，它们会读取标准输入、写入标准输出，并将错误信息传递到标准错误输出，这样的程序称为过滤器。
+
+##### 使用 read 读取行
+
+  ```
+  # 读入一个变量
+  $ x=abc ; printf "x is now '%s'. Enter new value: " $x ; read x
+  # 读入多个变量
+  $ read name rank serno
+  # 如果输入单词多于变量，最后剩下的单词全部被指定给最后一个变量
+  # 理想的行为应该转义这个法则：使用 read 搭配单一变量，将整行输入读取到该变量中
+  # 当给定 -r 选项时，read 不会将结尾的反斜杠视为特殊字符（read 默认反斜杠为继续读取下一行）
+  $ read -r name rank serno
+  $ tolstoy \                               # 只读取两个变量
+
+  # 复制目录树
+  # 这个脚本并不完美，特别是它无法保留原始目录的所有权与使用权限
+  $ find /home/tolstoy -type d -print    |  # 寻找所有目录
+  $   sed 's;/home/tolstoy/;/home/lt/;'  |  # 更改名称（使用分号定界符）
+  $     while read newdir                   # 读取新的目录名
+  $     do
+  $       mkdir $newdir                     # 新建目录
+  $     done
+  ```
+
+##### 关于重定向
+
+  ```
+  # 1、读取与写入操作
+  # < 以只读模式打开文件，而 > 以只写模式打开文件
+  $ program <> file
+
+  # 2、文件描述符处理
+  # 文件描述符 0、1、2 分别对应标准输入、标准输出以及标准错误输出
+  $ make 1> results 2> ERRS
+  # 舍弃错误信息
+  $ make 1> results 2> /dev/null
+  # 将输出和错误信息送给相同的文件
+  $ make > results 2>&1                     # 将 2 送到 1 的位置（中间不能有任何空格）
+  # 注意顺序，从左到右处理重定向
+  $ make 2>&1 > results
+  # 在文件描述符重定向之前会处理管道
+  $ make 2>&1 | ...
+
+  # 3、改变 I/O 设置
+  $ exec 2> /tmp/$0.log                     # 重定向标准错误输出
+  $ exec 3< /some/file                      # 打开新文件描述符 3
+  $ read name rank serno <&3                # 从该文件读取
+
+  # 如果希望取消（undo）标准错误输出的重定向，可以先把它复制到一个新文件以存储描述符
+  $ exec 5>&2                               # 把原来的标准错误输出保存到文件描述符 5 上
+  $ exec 2> /tmp/$0.log                     # 重定向标准错误输出
+  $ ...                                     # 执行各种操作……
+  $ exec 2>&5                               # 将原始文件复制到文件描述符 2
+  $ exec 5>&-                               # 关闭文件描述符 5，因为不再需要了
+  ```
+
+##### printf 的完整介绍
+
+##### 波浪号展开与通配符
+
+  ```
+  # 1、波浪号展开
+  # ~ 表示 当前用户的根目录，可以避免在程序里把路径直接编码
+  $ read user
+  $ vi ~$user/.profile
+
+  # 2、使用通配符
+  $ ?                                       # 任何的单一字符
+  $ *                                       # 任何的字符字符串
+  $ [set]                                   # 任何在 set 里的字符
+  $ [!set]                                  # 任何不在 set 里的字符
+  $ [a-c]                                   # a b c
+  $ [a-z]                                   # 小写字母
+  $ [!0-9]                                  # 非数字字符
+  $ [0-9!]                                  # 数字或感叹号
+  $ [a-zA-Z0-9_-]                           # 字母、数字、下划线或破折号
+
+  $ echo .*                                 # 显示隐藏文件
+  $ ls -la                                  # 列出隐藏文件
+  ```
+
+##### 命令替换
+
+  ```
+  # 1、使用反引号
+  $ for i in `cd /old/code/dir ; echo *.c`
+  $ do
+  $   diff -c cd /old/code/dir/$i $i | more
+  $ done
+
+  # 需要小心地转移反斜杠字符和双引号
+  $ echo outer `echo inner1 \`echo inner2\` inner1` outer
+  $ echo "outer +`echo inner -\`echo \"nested quote\" here\`- inner`+ outer"
+
+  # 2、将命令括在 $(...) 里面
+  $ echo outer $(echo inner1 $(echo inner2) inner1) outer
+  $ echo "outer +$(echo inner -$(echo "nested quote" here)- inner)+ outer"
+
+  # 3、简易数学：expr
+  # 优先级从小到大
+  $ e1 | e2                                 # 
+  $ e1 & e2                                 # = != < <= > >=
+  $ e1 = e2                                 # = -
+  $ e1 + e2                                 # * / 5
+  $ e1 * e2                                 # 
+  $ e1 : e2
+  $ ( expression )
+  $ integer
+  $ string
+  ```
+
+##### 引用
 

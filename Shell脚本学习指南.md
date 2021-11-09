@@ -1044,3 +1044,89 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 ##### 引用
 
+  ```
+  # 1、反斜杠转义
+  $ echo here is a real star: \* and a real question mark: \?
+
+  # 2、单引号
+  $ echo 'here are some metachararcters: * ? [abc] ` $ \'
+  # 混用单引号与双引号
+  $ echo 'He said, "How'\''s tricks?"'
+
+  # 3、双引号
+  $ x="I am x"
+  $ echo "\$x is \"$x\". Here is some output: '$(echo Hello World)'"
+  ```
+
+##### 执行顺序与 eval
+
+##### 内建命令
+
+#### 第八章 产生脚本
+
+#### 第九章 awk 的惊人表现
+
+#### 第十章 文件处理
+
+##### 列出文件
+
+  ```
+  # 列出文件
+  $ echo /bin/*sh                         # 显示 bin 下的 sh 脚本
+  $ ls /bin/*sh | cat                     # 在输出管道里显示
+
+  # 列出长文件
+  $ ls -l /bin/*sh
+
+  # 列出文件的 meta 数据
+  ```
+
+##### 使用 touch 更新修改时间
+
+  ```
+  # 改变文件的最后修改时间
+  $ touch -t 197607040000.00 US-bicentennial
+
+  # 复制参照文件的时间戳
+  $ touch -r US-bicentennial birthday     # 把时间戳复制到新的 birthday 文件
+  ```
+
+##### 临时性文件的建立和使用
+
+  ```
+  # /tmp 和 /var/tmp 目录存储临时文件
+  $ df /tmp                               # 显示 /tmp 下的磁盘剩余空间
+
+  # 创建临时文件
+  $ TMPFILE=`mktemp /tmp/myprog.XXXXXXXXXX` || exit 1
+  $ ls -l $TMPFILE
+  ```
+
+##### 寻找文件
+
+  ```
+  # 1、快速寻找文件
+  $ locate gcc-3.3.tar
+  $ locate gcc-3.3.tar | fgrep .tar.gz
+  $ locate '*gcc-3.3*.tar*'
+
+  # 2、寻找命令存储位置
+  $ type gcc                              # gcc 命令位置 
+
+  # 3、查找文件
+  $ find .                                # 寻找所有文件
+  $ find | LC_ALL=C sort                  # 以传统顺序排序 find 的输出结果
+  $ find -ls                              # 寻找文件，并使用 ls 风格的输出结果
+  $ find -ls | sort -kll                  # 寻找文件，并以文件名排序
+  $ find 'o*'                             # 寻找此目录下以 o 开头的文件
+  $ find sub                              # 在 sub 目录下寻找文件
+  $ find -prune                           # 不要在此目录下寻找
+  $ find * -prune                         # 寻找此目录下的文件
+  $ ls -d *                               # 列出文件，但没有目录内容
+  $ find . -size +0 -a -size -10          # 寻找文件大小块小于 10 的非空文件
+  $ find . -size 0 -o -atime +365         # 寻找空文件，或过去一年都未读取过的文件
+  ```
+
+##### 执行命令：xargs
+
+#### 第十三章 进程

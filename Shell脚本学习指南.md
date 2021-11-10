@@ -1129,4 +1129,76 @@ Shell 脚本最常用于系统管理工作，或是用于结合现有的程序�
 
 ##### 执行命令：xargs
 
+##### 文件系统的空间信息
+
+  ```
+  # 1、df 命令：文件单行摘要
+  $ df -k
+  $ df -h
+  $ df -lk /dev/sda6 /var
+
+  # 2、du 命令：磁盘用量
+  $ du -s /var/log /var/spool /var/tmp
+  ```
+
+##### 比较文件
+
+  ```
+  1、cmp 与 diff
+  $ cp /bin/ls /tmp                       # 创建副本
+  $ cmp /bin/ls /tmp/ls                   # 比较原始文件与副本
+
+  $ echo Test 1 > test.1
+  $ echo Test 2 > test.2
+  $ diff test.[12]                        # 比较两个相似文件有何不同
+
+  # 2、patch
+  $ diff -c test.[12] > test.dif          # 将相异处的相关内文存储到文件
+  $ patch < test.dif                      # 用 dif 文件修补 test.1 文件
+
+  # 3、文件校验和匹配
+  $ md5sum /bin.l?
+
+  # 4、数字签名验证
+  $ ls -l coreutils-5.0.tar*
+  $ gpg coreutils-5.0.tar.gz.sig          # 尝试验证此签名
+  ```
+
 #### 第十三章 进程
+
+  ```
+  # 显示开机至今的时间、用户数和平均负载
+  $ uptime
+
+  # 查看进程状态（PID-进程ID/PPID-父进程ID）
+  $ ps -efl
+  
+  # 显示前列资源消耗情况
+  $ top
+
+  # 删除进程（ABRT-中断/HUP-搁置/KILL-删除/TERM-终结）
+  $ kill -HUP 25094
+
+  # 捕捉进程信号
+  $ trap
+
+  # 进程追踪
+  $ PS1='traced-sh$ ' strace -e trace=process /bin/sh
+  $ traced-sh$ pwd
+  $ traced-sh$ /bin/pwd
+  $ traced-sh$ exit
+
+  # 查看进程帐
+  $ acctcom -a
+  $ acctcom -a | cut -d ' ' -f 1 | sort | uniq - c | sort -klnr -k2 |head -n 10
+
+  # 延迟的进程调度
+  $ sleep 3600
+  $ at now + 10 minutes
+  $ batch < command-file
+  $ crontab -l
+
+  # /proc 文件系统（每个执行中的进程都会拥有一个子目录）
+  $ ls -l /proc/16521
+  $ cat -v /proc/16521/cmdline
+  ```

@@ -190,4 +190,99 @@
 * 拓展赋值运算符
   1. count+=5
 
-* 复合表达式和运算符优先级
+* 复合表达式和运算符优先级（从高到低排序）
+  1.  expr.member                       # 成员访问
+  2.  expr(...) expr[...]               # 函数/方法调用，容器下标/切片
+  3.  **                                # 幂运算
+  4.  +expr -expr ~expr                 # 一元运算符
+  5.  * / // %                          # 乘法，除法
+  6.  + -                               # 加法，减法
+  7.  << >>                             # 按位移位
+  8.  &                                 # 按位与
+  9.  ^                                 # 按位异或
+  10. |                                 # 按位或
+  11. is(not) == != < <= > >= (not)in   # 比较，包含
+  12. not expr                          # 逻辑非
+  13. and                               # 逻辑与
+  14. or                                # 逻辑或
+  15. val1 if cond else val2            # 条件判断
+  16. = += -= *=                        # 赋值
+
+* 多级赋值
+  1. x=y=0                              # 将最右边的值赋给指定的多个标识符
+  2. x<=x+y<=10                         # 不需要计算两遍中间值
+
+##### 控制流程
+
+```
+# 控制结构：冒号用于标识代码块的开始，缩进级别或嵌套结构指定代码块
+
+# 1、条件语句
+if first_condition:
+  first_body
+elif second_condition:
+  second_body
+elif third_condition:
+  third_body
+else:
+  fourth_body
+
+# 以下两种写法等价
+if response:
+if response != '':
+
+# 机器人控制器
+if door_is_closed:
+  if door_is_locked:
+    unlock_door()
+  open_door()
+advance()
+
+# 2、while循环
+while condition:
+  body
+
+# 3、for循环
+for element in iterable:
+  body
+
+# 基于索引的for循环(找出列表中最大元素的索引)
+big_index = 0
+for j in range(len(data)):
+  if data[j] > data[big_index]:
+    big_index = j
+
+# 4、break和continue
+# break：终止内层循环
+# continue：停止当前迭代
+found = False
+for item in data:
+  if item == target:
+    found = True
+    break
+```
+
+##### 函数
+
+```
+# 1、给定目标值出现的次数
+def count(data,target):
+  n = 0
+  for item in data:
+    if item == target:
+      n += 1
+  return n
+
+# 测试序列中是否有一个这样的值
+def contains(data,target):
+  for item in data:
+    if item == target:
+      return True
+  return False
+
+# 函数调用
+# data作为grades的别名，target作为字符串'A'的别名
+# data和target是count函数定义的局部范围内的形式参数
+prizes = count(grades,'A')
+```
+

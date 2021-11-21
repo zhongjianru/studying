@@ -215,74 +215,158 @@
 ##### 控制流程
 
 ```
-# 控制结构：冒号用于标识代码块的开始，缩进级别或嵌套结构指定代码块
-
-# 1、条件语句
-if first_condition:
-  first_body
-elif second_condition:
-  second_body
-elif third_condition:
-  third_body
-else:
-  fourth_body
-
-# 以下两种写法等价
-if response:
-if response != '':
-
-# 机器人控制器
-if door_is_closed:
-  if door_is_locked:
-    unlock_door()
-  open_door()
-advance()
-
-# 2、while循环
-while condition:
-  body
-
-# 3、for循环
-for element in iterable:
-  body
-
-# 基于索引的for循环(找出列表中最大元素的索引)
-big_index = 0
-for j in range(len(data)):
-  if data[j] > data[big_index]:
-    big_index = j
-
-# 4、break和continue
-# break：终止内层循环
-# continue：停止当前迭代
-found = False
-for item in data:
-  if item == target:
-    found = True
-    break
+  # 控制结构：冒号用于标识代码块的开始，缩进级别或嵌套结构指定代码块
+  
+  # 1、条件语句
+  if first_condition:
+    first_body
+  elif second_condition:
+    second_body
+  elif third_condition:
+    third_body
+  else:
+    fourth_body
+  
+  # 以下两种写法等价
+  if response:
+  if response != '':
+  
+  # 机器人控制器
+  if door_is_closed:
+    if door_is_locked:
+      unlock_door()
+    open_door()
+  advance()
+  
+  # 2、while循环
+  while condition:
+    body
+  
+  # 3、for循环
+  for element in iterable:
+    body
+  
+  # 基于索引的for循环(找出列表中最大元素的索引)
+  big_index = 0
+  for j in range(len(data)):
+    if data[j] > data[big_index]:
+      big_index = j
+  
+  # 4、break和continue
+  # break：终止内层循环
+  # continue：停止当前迭代
+  found = False
+  for item in data:
+    if item == target:
+      found = True
+      break
 ```
 
 ##### 函数
 
 ```
-# 1、给定目标值出现的次数
-def count(data,target):
-  n = 0
-  for item in data:
-    if item == target:
-      n += 1
-  return n
-
-# 测试序列中是否有一个这样的值
-def contains(data,target):
-  for item in data:
-    if item == target:
-      return True
-  return False
-
-# 函数调用
-# data作为grades的别名，target作为字符串'A'的别名
-# data和target是count函数定义的局部范围内的形式参数
-prizes = count(grades,'A')
+  1、信息传递
+  # 函数：给定目标值出现的次数
+  def count(data,target):
+    n = 0
+    for item in data:
+      if item == target:
+        n += 1
+    return n
+  
+  # 函数：测试序列中是否有一个这样的值
+  def contains(data,target):
+    for item in data:
+      if item == target:
+        return True
+    return False
+  
+  # 函数调用
+  # data作为grades的别名，target作为字符串'A'的别名
+  # data和target是count函数定义的局部范围内的形式参数
+  prizes = count(grades,'A')
+  
+  # 默认参数
+  # 实参优先传给前面没有默认值的参数
+  # 如果一个参数有默认值，它后面的参数也必须有默认值
+  def foo(a,b=15,c=7)
+  
+  # 函数：计算学生平均绩点（可以定制可选参数）
+  def compute_gpa(grades,
+                  points={'A+':4.0, 'A':4.0,'A-':3.67,
+                          'B+':3.33,'B':3.0,'B-':2.67,
+                          'C' :2.0, 'C':1.67,'D+':1.33,
+                          'D' :1.0, 'F':0.0
+                  })
+    num_courses=0
+    total_points=0
+    for g in grades:
+      if g in points:
+        num_course+=1
+        total_points+=points[g]
+    return total_points/num_courses
+  
+  # 函数：range(start,stop,step)，但range(n)中n作为stop值，违反前面的原则
+  def range(start,stop=None,step=1):
+    if stop is None:
+      stop=start
+      start=0
+    ...
+  
+  # 2、常见的内置函数
+  abs(x)
+  all(iterable)
+  any(iterable)
+  chr(integer)
+  divmod(x,y)
+  hash(obj)
+  id(obj)
+  input(prompt)
+  isintance(obj,cls)
+  iter(iterable)
+  len(iterable)
+  map(f,iter1,iter2,...)
+  max(iterable/a,b,c,...)
+  min(iterable/a,b,c,...)
+  next(iterable)
+  open(filename,mode)
+  ord(char)
+  pow(x,y)
+  print(obj1,obj2,...)
+  range(stop/start,stop/start,stop,step)
+  reversed(sequence)
+  round(x/x,k)
+  sorted(iterable)
+  sum(iterable)
+  type(obj)
 ```
 
+##### 简单的输入和输出
+
+```
+  # 1、控制台输入输出
+  print()
+  # 以空格分隔，末尾有一个换行符（sep参数指定分隔符，end参数指定结尾字符串）
+  print(a,b,c,sep=':')
+
+  input()
+  # 可以指定提示信息，等待用户输入任意字符，直到按下返回键
+  year=int(input('In what year were you born?'))
+  reply=input('Enter x and y, sepaated by space:')
+  pieces=reply.split()
+  x=float(pieces[0])
+  y=float(pieces[1])
+
+  2、文件操作
+  fp=open('sample.txt')   # 默认以mode='r'只读方式打开文件（w/r初始位置=0，a初始位置=文件末尾）
+  fp.read(k)              # 返回可读文件中接下来的k个字符（不指定参数则返回所有内容）
+  fp.readline()           # 从文件中读取一行内容，并以此作为一个字符串返回
+  fp.readlines()          # 将文件的每行内容作为一个字符串存入列表中并返回该列表
+  for line in fp          # 遍历文件的每一行
+  fp.tell()               # 返回当前位置偏离开始处的字节数
+  fp.write(string)        # 在科协文件的当前位置将string的内容写入（如果需要换行符则需手动写入）
+  wp.writelines(seq)      # 在科协文件的当前位置写入给定序列的每个字符串
+  print(...,file=fp)      # 将print函数的输出重定向给文件（输出文件内容）
+```
+
+##### 异常处理

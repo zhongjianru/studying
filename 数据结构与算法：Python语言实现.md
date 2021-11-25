@@ -364,9 +364,86 @@
   fp.readlines()          # 将文件的每行内容作为一个字符串存入列表中并返回该列表
   for line in fp          # 遍历文件的每一行
   fp.tell()               # 返回当前位置偏离开始处的字节数
-  fp.write(string)        # 在科协文件的当前位置将string的内容写入（如果需要换行符则需手动写入）
-  wp.writelines(seq)      # 在科协文件的当前位置写入给定序列的每个字符串
+  fp.write(string)        # 在可写文件的当前位置将string的内容写入（如果需要换行符则需手动写入）
+  wp.writelines(seq)      # 在可写文件的当前位置写入给定序列的每个字符串
   print(...,file=fp)      # 将print函数的输出重定向给文件（输出文件内容）
 ```
 
 ##### 异常处理
+
+```
+  # 抛出异常
+  raise ValueError('x cannot be negative)
+
+  # 处理异常
+  try:
+    fp = open('sample.txt)
+  except IOError as e:
+    print('Unable to open the file:', e)
+
+  # 处理多种异常
+  age = -1
+  while age <= 0:
+    try:
+      age = int(input('Enter age in years: '))
+      if age <= 0:
+        print('Your age must be positive')
+    # 1、输出异常信息
+    except(ValueError, EOFError):
+      print('Invalid response')
+    
+    # 2、不处理异常
+    except(ValueError, EOFError):
+      pass
+
+    # 3、分别输出异常信息并抛出异常
+    except ValueError:
+      print('That is an invalid age specification')
+    except EOFError:
+      print('There was an unexpected error reading input.')
+      raise
+    except:  # 其他异常
+      pass
+    finally:  # 总是被执行，通常用于清理工作，比如关闭一个文件
+      print('done.')
+```
+
+##### 迭代器和生成器
+
+```
+  # 1、迭代器
+  # 许多类型的对象都可迭代，比如基本的容器类型（列表、元组和集合）
+  # 字符串可以生成字符的迭代，字典可以生成键的迭代，文件可以生成行的迭代
+  # 迭代器：一个对象，通过一系列值来管理迭代
+  next(i)         # i定义为一个迭代器对象，访问后续元素，如果没有后续元素则抛出异常
+  iter(obj)       # 对象obj是可迭代的，产生一个迭代器
+
+  # list的实例是可迭代的，但它本身不是一个迭代器，无法调用next(data)
+  data = [1,2,4,8]
+  i = iter(data)  # 产生list_iterator类的一个实例
+  next(i)
+
+  # 基于同一个可迭代对象可以创建多个迭代器，同时每个迭代器维护自身演进状态
+  # 迭代器不储存列表元素，而是保存原始列表的当前索引，该索引指向下一个元素（如果原始列表在迭代完成之前被修改，迭代器将报告修改后的内容）
+
+  # 隐式迭代序列值函数和类：无需立刻构建数据结构来存储所有的值
+  # 返回可迭代的range对象，只有访问时才会生成值（懒惰计算法）
+  range(1000000)
+  
+  # 2、生成器
+  # 创建迭代器最方便的技术是使用生成器
+  # 例1：确定一个正整数的所有因子
+  def factors(n):
+    results = []
+    for k in range(1,n+1):
+      if n % k == 0:
+        results.append(k)
+    return results
+  
+  # 例2：使用生成器实现
+  def factors(n):
+    for k in range(1,n+1):
+      if n % k ==0:
+        yield k
+
+```

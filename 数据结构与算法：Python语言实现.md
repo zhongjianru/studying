@@ -443,7 +443,109 @@
   # 例2：使用生成器实现
   def factors(n):
     for k in range(1,n+1):
-      if n % k ==0:
+      if n % k == 0:
+        yield k  # yield this factor as next result
+
+  # 生成器可以依赖不同构造中的多个yield语句，以及由控制的自然流决定的生成序列
+  # 例3：在计算整数n的因子时，通过测试值达到这个数的平方根，同时指出每个k相关联的因子
+  def factors(n):
+    k = 1
+    while k * k < n:
+      if n % k == 0:
         yield k
+        yield n//k
+      k += 1
+    if k * k == n:
+      yield k
+
+  # 3、懒惰计算
+  # 只计算需要的数，并且整个系列的数不需要一次性全部驻留在内存中
+  # 事实上，一个生成器可以有效地产生数值的无限序列
+  # 例4：斐波那契数列
+  def fibonacci():
+    a = 0
+    b = 1
+    while True:
+      yield a
+      future = a + b
+      a = b
+      b = future
+```
+
+##### Python 的其他便利特性
 
 ```
+  # 1、条件表达式
+  expr1 if condition else expr2
+
+  # 2、解析语法
+  # expression 和 condition 都取决于 value，if 子句是可选的
+  [ expression for value in iterable if condiion ]
+
+  # 等价于：
+  result = []
+  for value in iterable:
+    if condition:
+      result.append(expression)
+
+  # 例1：计算数的平方
+  squares = []
+  for k in range(1,n+1):
+    squares.append(k*k)
+
+  # 使用列表解析
+  squares = [ k*k for k in range(1,n+1) ]
+
+  # 例2：求整数n的因子
+  factors = [ k for k in range(1,n+1) if n % k == 0 ]
+
+  # Python 支持类似的集合、生成器或字典的解析语法
+  [ k*k for k in range(1,n+1) ]     # 列表解析
+  { k*k for k in range(1,n+1) }     # 集合解析
+  ( k*k for k in range(1,n+1) )     # 生成器解析
+  { k: k*k for k in range(1,n+1) }  # 字典解析
+
+  # 当结果不需要存储在内存中时，生成器语法特别有优势
+  # 例3：计算前n个数的平方和（将列表作为参数使用）
+  total = sum(k * k for k in range(1,n+1))
+
+  # 3、序列类型的打包和解包
+  # 元组的自动打包：即使没有提供封闭的圆括号，也会被视为元组
+  data = 2,4,6,8
+
+  # 自动返回单个对象：即元组(x,y)
+  return x,y
+
+  # 自动解包：右边可以是任意迭代类型，只要左边变量数等于右边迭代元素数
+  a,b,c,d = range(7,11)
+
+  # 用来解包一个函数返回的元组
+  quotient, remainder = divmod(a,b)
+
+  # 遍历迭代序列时，相当于
+  for x,y in [ (7,2),(5,8),(6,4) ]
+
+  # 遍历由字典类的item()返回的键值对，相当于
+  for k,v in mapping.items()
+
+  # 4、同时分配：自动打包和解包结合起来
+  # 将右边自动打包成一个元组，然后自动解包，将元素分配给左边的标识符
+  x,y,z = 6,2,5
+
+  # 同时分配技术先计算右侧再计算左侧
+  # 在执行交换时，代表右边打包值的未命名元素相当于隐式的临时变量
+  j,k = k,j
+  # 相当于
+  temp = j
+  j = k
+  k = temp
+
+  # 例4：用同时分配技术生成斐波那契数列
+  def fibonacci():
+    a,b = 0,1
+    while True:
+      yield a
+      a,b = b,a+b
+```
+
+##### 作用域和命名空间

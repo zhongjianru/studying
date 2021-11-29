@@ -549,3 +549,44 @@
 ```
 
 ##### 作用域和命名空间
+
+##### 模块和import语句
+
+```
+  # 1、导入模块
+  # 将math引入当前命名空间
+  import math
+  math.sqrt(2)
+
+  # 将math模块定义的pi和sqrt添加到当前命名空间（可能覆盖同名模块）
+  from math import pi,sqrt
+  sqrt(2)
+
+  # 2、创建新模块
+  # 将相关定义放在.py文件里，再导入
+
+  # 3、直接调用的脚本
+  if __name__ == '__main__'
+
+  # 4、现有模块
+  array
+  collections
+  copy
+  heapq
+  math
+  os
+  random
+  Re
+  sys
+  time
+
+  # 5、伪随机数生成
+  next = (a * current + b) % n
+
+  seed(hashable)              # 基于参数的散列值初始化伪随机数生成器
+  random()                    # 在开区间(0.0,1.0)返回一个伪随机浮点数
+  random(a,b)                 # 在闭区间[a,b]返回一个伪随机整数
+  randrange(start,stop,step)  # 在参数指定的范围内返回一个伪随机整数
+  choice(seq)                 # 返回一个伪随机选择的给定序列中的元素
+  shuffle(seq)                # 重新排列给定的伪随机序列中的元素
+```

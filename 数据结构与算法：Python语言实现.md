@@ -678,3 +678,91 @@
 
 ##### 类定义
 
+  ```
+  # 调用函数时不需要传入 self 参数，解释器自动将调用对应函数的实例绑定为 self 参数
+  class CreditCard:
+    """ A consumer credit card. """
+    
+    # 构造函数：将参数值赋给实例变量，用实例变量创建对象
+    # 数据成员名称以下划线开头，表名它被设计为非公有的，类的用户不应该直接访问这样的成员
+    # get 函数访问内部变量，set 函数更新内部变量
+    def __init__(self, customer, bank, acnt, limit):
+      """ Create a new credit card instance. """
+      The initial balance is zero.
+      customer the name of the customer
+      bank     the name of the bank
+      acnt     the acount identifier
+      limit    credit limit (measured in dollars)
+      """
+
+      self._customer = customer
+      self._bank = bank
+      self._account = acnt
+      self._limit = limit
+      self._balance = 0
+    
+    def get_customer(self):
+      """ Return name of the customer. """
+      return self._customer
+      
+    def get_bank(self):
+      """ Return bank's name. """
+      return self._bank
+      
+    def get_account(self):
+      """ Return the card identifying number(typically stored as a string). """
+      return self._account
+      
+    def get_limit(self):
+      """ Return current credit limit. """
+      return self._limit
+      
+    def get_balance(self):
+      """ Return current balance. """
+      return self._balance
+
+    def charge(self, price):
+      """ Charge given price to the card. assuming sufficient credit limit.
+      Return True if charge was processed; False if charge was denied.
+      """
+      if price + self._balance > self._limit:
+        return False
+      else:
+        self._balance += price
+        return True
+    
+    def make_payment(self, amount):
+      """ Process customer payment that reduces balance. """
+      self._balance -= amount
+
+  # 创建类实例
+  cc = CreditCard('John Doe', '1st Bank', '5391 0375 9387 5309', 1000)
+
+  # 测试类
+  # 提供方法覆盖，每个方法至少被调用一次
+  # 用 unitest 模块可以将得到的值与预期结果自动比较，只有当检测到错误时才产生输出
+  if __name__ == '__main__':
+    wallet = []
+    wallet.append(CreditCard('John Bowman', 'California Savings', '5391 0375 9387 5309', 2500))
+    wallet.append(CreditCard('John Bowman', 'California Federal', '3485 0399 3395 1954', 3500))
+    wallet.append(CreditCard('John Bowman', 'California Finance', '5391 0375 9387 5309', 5000))
+
+    for val in range(1, 17):
+      vallet[0].charge(val)
+      vallet[1].charge(val*2)
+      vallet[2].charge(val*3)
+  
+    for c in range(3):
+      print('Customer =', wallet[c].get_customer())
+      print('Bank =', wallet[c].get_bank())
+      print('Account =', wallet[c].get_account())
+      print('Limit =', wallet[c].get_limit())
+      print('Balance =', wallet[c].get_balance())
+  
+      while wallet[c].get_balance() > 100:
+        wallet[c].make_payment(100)
+        print('New balance =', wallet[c].get_balance())
+      print()
+
+  # 运算符重载和 Python 的特殊方法
+  ```

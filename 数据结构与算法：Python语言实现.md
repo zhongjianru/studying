@@ -794,5 +794,167 @@
   __ne__()          # a != b 即返回 not(a==b) 作为结果
   __lt__()          # a < b，但不支持 a <= b 的语义
 
-  # 3、多维向量类 67
+  # 3、多维向量类（多维空间中的向量坐标）
+  # 通过保持内部列表的封装，可以为类中的实例执行所请求的公共接口
+  v = Vector(5)     # <0,0,0,0,0>
+  v[1] = 23         # <0,23,0,0,0>
+  v[-1] = 45        # <0,23,0,0,45>
+  print(v[4])       # 45
+  u = v+v           # <0,46,0,0,90>
+  total = 0
+  for entry in v:
+    total += entry
+  
+  # 向量类定义
+  class Vector:
+    """ Represent a vector in a multidimensional space. """
+
+    def __init__(self, d)
+      """ Create d-dimensional vector of zeros. """
+      self._coords = [0] * d
+
+    def __len__(self):
+      """ Return the dimension of vector. """
+      return len(self._coords)
+
+    def __getitem__(self, j):
+      """ Return jth coordinate of vector. """
+      return self._coords[j]
+
+    def __setitem__(self, j, val):
+      """ Set jth coordinate of vector to given value. """
+      self._coords[j] = val
+
+    def __add__(self, other):
+      """ Return sum of two vectors. """
+      if len(self) != len(other):         # relies on __len__ method
+        raise ValueError('dimensions must agree.')
+      result = Vector(len(self))          # start with vector of zeros
+      for j in range(len(self)):
+        result[j] = self[j] + other[j]
+      return result
+
+    def __eq__(self, other):
+      """ Return True if vector has same coordinates as other. """
+      return self._coords == other._coords
+
+    def __ne__(self, other):
+      """ Return True if vector differs from other. """
+      return not self == other            # relies on existing __eq__ defination
+    
+    def __str__(self):
+      """ Produce string representation of vector. """
+      return '<' + str(slef._coords)[1:-1] + '>'
+
+    # 4、迭代器
+    # 集合的迭代器提供了一个关键功能：如果集合有下一个元素，则返回该元素，否则抛出异常
+    # 使用生成器(generator)语法自动生成一个已有值的迭代器
+    # 例：一个支持任何序列类型的迭代器类
+    class SequenceIterator:
+      """ An iterator for any of Python's sequence types. """
+
+      def __init__(self, sequence):
+        """ Create an iterator for the given sequence. """
+        self._seq = sequence              # keep a reference to the underlying data
+        self._k = -1                      # will increment to 0 on first call to next
+
+      def __next__(self):
+        """ Return the next element, or else raise error. """
+        self._k += 1                      # advance to next index, begin from 0
+        if self._k < len(self._seq):
+          return(self._seq[self._k])      # return the data element
+        else:
+          raise StorIteration()           # there are no more elements
+
+      def __iter__(self):
+        """ By convention, an iterator must return itself as an iterator. """
+        return self
+
+    # 5、Range 类
+    # Python 2：会引起一个数字范围列表的实例化和初始化，对时间和内存造成不必要的浪费
+    # Python 3：使用惰性求值策略，有效地表示所需元素范围，而不必在内存中明确储存元素
+    # 模拟内置 Range 类，构建时通过参数计算元素个数，并返回指定值
+    class Range:
+      """ A class that mimic's the built-in range class. """
+
+      def __init__(self, start, stop=None, step=1):
+        """ Initialize a Range instance. Sementics is similar to built-in range class. """
+        if step == 0:
+          raise ValueError('step cannot be 0.')
+        
+        if stop is None:                  # special case of range(n)
+          start, stop = 0, start          # should be treated as if range(0,n)
+
+        # calculate the effective length once
+        self._length = max(0, (stop - start + step - 1) // step)
+
+        # need knowledge of start and step (but not stop) to support __getitem__
+        self._start = start
+        self._step = step
+
+      def __len__(self):
+        """ Return number of entries in the range. """
+        return self._length
+
+      def __getitem__(self, k):
+        """ Return entry at index k (using standard interpretation if negative). """
+        if k < 0:
+          k += len(self)                   # attempt to convert negative index
+        
+        if not 0 <= k < self.length:
+          raise IndexError('index out of range.')
+        
+        return self._start + k * self._step
+  ```
+
+##### 继承
+
+  ```
+  # 在一个分层的方式中，在水平层次上把类似的抽象定义组合在一起，下层组件更加具体，上层组件更加通用
+  # 继承：模块化和层次化组织的机制，基于一个现有的类（基类/父类/超类）作为起点定义新的类（子类）
+  # 子类可以通过覆盖现有方法实现特化，也可以通过提供全新方法拓展其父类
+  # 通过 super() 调用从父类继承的方法
+
+  # 1、拓展 CreditCard 类
+  # 特化：当尝试收费由于超过信用卡额度被拒绝时，将会收取费用
+  # 拓展：将有一个对未结清余额按月收取利息的机制，即基于构造函数的一个参数年利率（APR）
+  # 子类直接访问数据成员 self._balance，是由父类建立的（名字带下划线代表它是一个非公有成员）
+  # 保护成员：可以访问子类，但不能访问一般的公有类（名字以一个下划线开头）
+  # 私有成员：既不能访问子类，也不能访问公有类（名字以两个下划线开头）
+  # 为了保护余额，可以添加一个非公有的方法 _set_balance，子类通过该方法来改变余额而不直接访问数据成员
+
+  class PredatoryCreditCard(CreditCard):
+    "" An extension to CreditCard that compunds interest and fees. """
+
+    def __init__(self, customer, bank, acnt, limit, apr):
+      """ Create a new predatory credit card instance. 
+          The initial balance is zero.
+          customer  the name of the customer (e.g. 'John Bowman')
+          bank      the name of the bank (e.g. 'California Savings')
+          acnt      the caacnt identifier (e.g. '5391 0375 9387 5309')
+          limit     creadi limit (measured in dollars)
+          apr       annual percentage rate (e.g. 0.0825 for 8.25% APR)
+      """
+      super().__init__(customer, bank, acnt, limit)
+      self._apr = apr
+
+    def charge(self, price):
+      """ Charge given price to the card, assuming sufficient credit limit.
+          Return True if charge was processed.
+          Return False and assess $5 fee if charge is denied.
+      """
+      success = super().charge(price)   # call inherited method
+      if not success:
+        self._balance += 5              # assess penalty
+      return success                    # caller expects return value
+
+    # extended method
+    def process_month(self):
+      """ Assess monthly interest on outstanding balance. """
+      if self._balance > 0:
+        # if positive balance, convert APR to monthly multiplicative factor
+        monthly_factor = pow(1 + self._apr, 1/12)
+        self._balance *= monthly_factor
+
+  # 2、数列的层次图
   ```

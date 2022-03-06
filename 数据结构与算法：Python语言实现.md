@@ -859,7 +859,7 @@
         self._k = -1                      # will increment to 0 on first call to next
 
       def __next__(self):
-        """ Return the next element, or else raise error. """
+        """ Return the next element, or else raise an error. """
         self._k += 1                      # advance to next index, begin from 0
         if self._k < len(self._seq):
           return(self._seq[self._k])      # return the data element
@@ -957,4 +957,167 @@
         self._balance *= monthly_factor
 
   # 2、数列的层次图
+  # 为了最大限度地提高代码的可重用性，给出一个由通用基类产生的 Progression 类的分层
+  # 该类被设计为其他数列类型的基类，提供尽可能多的公共函数，并由此把子类的负担减至最小
+  # 非公有方法 _advance 更新 self._current 域的值，但子类可以重写该方法，以不同方法来计算下一个值
+  
+  # 例：一个通用数字数列类
+  class Progression:
+    """ Iterator producing a grneric progression
+        Default iterator produces the whole numbers 0,1,2,...
+    """
+
+    def __init__(self, start=0):
+      """ Initialize current to the first value of the progression. """
+      self._current = start
+
+    def _advance(self):
+      """ Update self._current to a new value. 
+          This shoule be overridden by a subclass to customize progression.
+          By convention, if current is set to None, this designates the end of a finite progression.
+      """
+      self._current += 1
+    
+    def __next__(self):
+      """ Return the next element, or else raise an error. """
+      if self._current is None:         # our convention to end a progression
+        raise StopIteration()
+      else:
+        answer = self._current          # record current value to return
+        self._advance()                 # advance to prepare for next time
+        return answer
+      
+    def __iter__(self):
+      """ By convention, an iterator must return itself as an iterator. """
+      return self
+
+    def print_progression(self, n):
+      """ Print next n values of the progression. """
+      print(' '.join(str(next(self)) for j in range(n)))
+  
+  # 例：一个等差数列类
+  class ArithmeticProgression(Progression):
+    """ Iterator producing an arithmetic progression. """
+
+    def __init__(self, increment=1, start=0):
+      """ Create a new arithmetic progression.
+          increment  the fixed constant to add to each term (default 1)
+          start      the first term of the progression (default 0)
+      """
+      super().__init__(start)           # initialize base class
+      self._increment = increment
+
+    def _advance(self):
+      """ Update current value by adding the fixed increment. """
+      self._current += self._increment
+
+  # 例：一个等比数列类
+  class GeometricProgression(Progression):
+    """ Iterator producing a geometric progression. """
+
+    def __init__(self, base=2, start=1):
+      """ Create a new geometric progression.
+          base    the fixed constant multiplied to each term (default 2)
+          start   the first term of the progression (default 1)
+      """
+      super().__init__(start)
+      self._base = base
+
+    def _advance(self):
+      """ Update current value by multilying it by the base value. """
+      self._current *= self._base
+
+  # 例：一个斐波那契数列类
+  class FibonacciProgression(Progression):
+    """ Iterator producing a generalized Fibonacci progression. """
+
+    def __init__(self, first=0, second=1):
+      """ Create a new fibonacci progression.
+          first    the first term of the progression (default 0)
+          second   the second term of the progression (default 1)
+      """
+      super().__init__(first)           # start progression at first
+      self._prev = second - first       # fictitious value prociding first
+    
+    def _advance(self):
+      """ Update current value by taking sum of previous two. """
+      self._prev, self._current = self._current, self._prev + self._current
+
+  # 例：数列类的单元测试
+  if __name__ =='__main__':
+    print('Default progression:')
+    Progression().print.progression(10)
+
+    print('Arithmetic progression with increment 5:')
+    ArithmeticProgession(5).print.progression(10)
+
+    print('Arithmetic progression with increment 5 and start 2:')
+    ArithmeticProgession(5, 2).print.progression(10)
+
+    print('Geometric progression with default base:')
+    GeometricProgession().print.progression(10)
+
+    print('Geometric progression with base 3:')
+    GeometricProgession(3).print.progression(10)
+
+    print('Fibonacci progression with default start values:')
+    FibonacciProgession().print.progression(10)
+
+    print('Fibonacci progression with values 4 and 6:')
+    FibonacciProgession(4, 6).print.progression(10)
+
+  # 3、抽象基类
+  # 避免重复代码，可以被需要它的其他类所继承（比如上面的 Progression 类）
+  # 这个类的唯一目的是作为继承的基类，不能直接实例化，而具体的类可以被实例化
+  # 在静态语言（如 Java 和 C++）中，抽象基类作为一个正式的类型，可以确保一个或多个抽象方法
+  # 这就为多态性提供了支持，因为变量可以有一个抽象基类作为其声明的类型，及时它是一个具体子类的实例
+  # 在 Python 中没有声明类型，这种多态性不需要一个统一的抽象基类就可以实现
+  # 因此 Python 中没有强烈要求定义正式的抽象基类，尽管 abc 模块提供了正式的抽象基类的定义
+
+  # 模板方法模式：一个抽象基类在提供依赖于调用其他抽象行为时的具体行为
+  # 只要一个类提供定义了缺失的抽象行为，继承的具体行为也就被定义了
+  # 如果一个子类对从基类继承的行为提供自己的实现，那么新的定义就会覆盖之前继承的
+  # 例：一个类似于 Collections.Sequence 的抽象基类
+  # ABCMeta 类作为 Sequence 类的袁磊，为类定义本身提供一个模板，确保类的构造函数引发异常
+  # @abstractmethod 声明不需要在抽象基类中提供实现，由具体子类来实现这个方法（禁止没有重载抽象方法的具体子类实例化）
+  from abc import ABCMeta, abstractmethod
+
+  class Sequence(metaclass=ABCMeta):
+    """ Our own version of collections.Sequence abstract base class. """
+
+    @abstractmethod
+    def __len__(self):
+      """ Return the length of the sequence. """
+
+    @abstractmethod
+    def __getitem__(self, j):
+      """ Return the element at index j of the sequence. """
+
+    def __contains__(self, val):
+      """ Return True if val found in the sequence; False otherwise. """
+      for j in range(len(self)):
+        if self[j] == val:              # found match
+          return True
+      return False
+
+    def index(self, val):
+      """ Return leftmost index at which val is found (or raise an error). """
+      for j in range(len(self)):
+        if self[j] == val:              # leftmose match
+          return j
+      raise ValueError('value not in sequence')
+
+    def count(self, val):
+      """ Return the number of elements equal to given value. """
+      k = 0
+      for j in range(len(self)):
+        if self[j] == val:
+          k += 1
+      return k
+
+  # Range 类支持 __len__ 和 __getitem__ 方法，但不支持 count 和 index 方法
+  # 将 Sequence 类声明为一个超类，那么它也将继承 count 和 index 方法
+  class Range(collections.Sequence):
   ```
+
+##### 命名空间和面向对象

@@ -1121,3 +1121,71 @@
   ```
 
 ##### 命名空间和面向对象
+
+  ```
+  # 命名空间：管理特定范围内定义的所有标识符，将每个名称映射到相应的值
+  # 第一类对象：函数、类、模块
+
+  # 1、实例命名空间：管理单个对象的特定属性
+  # 例如 CreditCard 类的每个实例都包含不同的余额、账号、信用额度等
+  # 每个已定义的类都有一个单独的类命名空间，用于管理一个类的所有实例所共享的成员或没有引用任何特定实例的成员
+  # 类成员中 self 作为限定词使用，使得 _balance 标识符直接被添加到实例命名空间中
+  # 类发生继承后，每个对象仍有单一的实例命名空间
+
+  # 一个类命名空间包含所有直接在类定义体内的声明
+  class CreditCard:
+    def make_payment(self, amount):
+      ...
+  
+  # 类数据成员：当有一些值（如常量），被一个类的所有实例共享时，就可以用到类级的数据成员
+  class PredatoryCreditCare(CreditCard):
+    OVERLIMIT_FEE = 5                   # this is a class-level member
+
+    def chanrge(self, price):
+      success = super().charge(price)
+      if not success:
+        self._balance += PredatoryCreditCard.OVERLIMIT_FEE
+      return success
+  
+  # 嵌套类
+  # B 类是嵌套类，标识符 B 是进入了 A 类的命名空间相关联的一个新定义的类
+  # 允许更高级形式的继承，使外部类的子类重载嵌套类的定义
+  class A:                              # the outer class
+    class B:                            # the nested class
+
+  # 辅助字典
+  # 默认情况下，每个命名空间均代表内置 dict 类的一个实例，即将范围内识别的名称与相关联的对象映射起来
+  # 虽然字典结构支持相对有效的名称查找，但是需要的额外内存超出了存储原始数据的内存
+
+  # __slots__ 声明
+  # 使用流表示一个类的所有实例，类定义必须提供 _slots_ 的类成员分配给一个固定的字符串序列以服务于变量
+  class CreditCard:
+    __slots__ = '_customer', '_bank', '_account', '_balance', '_limit'
+
+  # 子类也必须声明该变量
+  class PredatoryCreditCard(CreditCard):
+    __slots__ = '_apr'
+
+  # 2、名称解析和动态调度
+  # 名称解析：用点运算符语法访问现有成员
+  # 1、在实例命名空间中搜索
+  # 2、否则在该实例所属的类的命名空间中搜索
+  # 3、通过继承层次结构向上，检查每一个父类的类命名空间（通常检查超类、超类的超类等等）
+  # 4、如果还没有找到该名称，就会引发一个 AttrbuteError 异常
+
+  # 动态调度：在编译时基于变量声明的类型来决定调度函数的版本
+  ```
+
+##### 深拷贝和浅拷贝
+
+  ```
+  # 创建别名 foo
+  foo = bar
+
+  # 拷贝对象的一个副本（比如列表），其内容与原来的序列相同
+  # 浅拷贝：显式调用构造函数
+  palette = list(warmtones)
+
+  # 深拷贝：新副本引用的对象也是从原始版本中复制过来的
+  palette = copy.deepcopy(warmtones)
+  ```

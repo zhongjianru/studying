@@ -1253,9 +1253,9 @@
   log n = log n/log 2         # 不同底数转换
   log 2n = log 2 + log n =  1 + log n
   log n/2 = log n - log 2 = log n - 1
-  log n的3次方 = 3log n
-  log 2的n次方 = n log 2 = n * 1 = n
-  2的log n次方 = n的log 2次方 = n的1次方 = n
+  log n^3 = 3log n
+  log 2^n = n log 2 = n * 1 = n
+  2^log n = n^log 2 = n^1 = n
 
   # 3、线性函数
   # 用任何算法处理不在计算机内存中的 n 个对象的最快运行时间，因为已经需要 n 次操作了
@@ -1268,7 +1268,7 @@
 
   # 5、二次函数
   # 许多函数中都有嵌套循环，其中内层循环执行一个线性操作数，外层循环则表示执行线性操作数的次数
-  f(n) = n的2次方
+  f(n) = n^2
 
   # 嵌套循环中第一次循环迭代的操作数为1，第二次为2，第三次为3，即总操作数计算如下
   # 但增长的阶数仍然是 n 的平方
@@ -1276,14 +1276,14 @@
 
   # 6、三次函数和其他多项式
   # 多项式求和（略）
-  f(n) = n的3次方
+  f(n) = n^3
 
   # 7、指数函数
   # 考虑到对数函数的情况，在算法分析中，指数函数最基本的情况是 b = 2
-  f(n) = b的n次方
+  f(n) = b^n
 
-  # 2的n次方-1 是在二进制表示法中使用 n 位可以表示的最大整数
-  1+2+4+8+...+2的n-1次方 = 2的n次方 - 1
+  # 2^n-1 是在二进制表示法中使用 n 位可以表示的最大整数
+  1+2+4+8+...+2^n-1 = 2^n - 1
   
   # 8、比较增长率
   # 以上 7 中函数的增长率比较如下（从大到小）
@@ -1301,7 +1301,7 @@
   
   ```
   # 返回列表最大值的函数
-  def find max(data):
+  def find_max(data):
     """ Return the maximum element from a nonempty Python list. """
     biggest = data[0]
     for val in data:
@@ -1309,3 +1309,154 @@
         biggest = val
     return biggest
   ```
+
+  ###### 大 O 符号
+
+  定义：
+  * 令 f(n) 和 g(n) 作为正实数映射正整数的函数
+  * 如果有实型常量 c>0 和整型常量 n0≥1 满足 f(n)≤cg(n)，当 n≥n0
+  * 我们就说 f(n) 是 O(g(n))，或者可以说 f(n) 是 g(n) 的量级，用数学语言表达为 f(n) ∈ g(n)
+  * 含义：当给定一个常数因子且在渐进意义上 n 趋于无穷时，函数 f(n) ≤ 函数 g(n)
+
+  相关命题：
+  * 最大数算法的运行时间为 O(n)
+  * 8n+5 是 O(n)
+  * 5n^4 + 3n^3 + 2n^2 + 4n + 1 是 O(n^4)
+  * 5n^2 + 3n log n + 2n + 5 是 O(n^2)
+  * 20n^3 + 10n log n + 5 是 O(n^2)
+  * 3 log n + 2 是 O(log n)
+  * 2^(n+2) 是 O(2^n)
+  * 2n + 100 log n 是 O(n)
+
+  ###### 大 Ω 符号
+
+  定义：
+  * 正如大 O 提供一种渐进说法：一个函数的增长速率“小于或等于”另一个函数
+  * 大 Ω 提供了另一种渐进说法：一个函数的增长速率“大于或等于”另一个函数
+  * 3n log n - 2n 是 Ω(n log n)
+
+  ###### 大 Θ 符号
+
+  定义：
+  * 当给定一个常数因子时，两个函数的增长速率相同
+  * 3n log n + 4n + 5 log n 是 Θ(n log n)
+
+  ###### 比较分析
+
+  * 假设有两个算法都能解决同一个问题，算法 A 运行时间 O(n)，算法 B 运行时间 O(n^2)
+  * 算法 A 比算法 B 更具有渐进性（虽然当 n 的值比较小时，后者运行时间可能更短）
+
+  ###### 算法分析示例
+
+  ```
+  # 1、常量时间操作
+  data = list()
+  len(data)         # O(1)，每一个列表都包含一个记录当前长度的实例变量，函数的运行时间独立于列表长度
+  data[j]           # O(1)，无需迭代列表，而是直接将该索引作为底层数组的偏移量达到的
+
+  # 2、回顾在序列中找最大值算法
+  find_max(data)    # O(n)，初始化、赋值和返回语句运行时间都为O(1)，该循环执行 n 次
+
+  # 3、进一步分析找最大值算法
+  # 但是在循环的每一次迭代中，只有当前元素比以往所有元素都更大时才会更新当前最大值
+  # 如果给出的是随机序列，则第j个元素比前j个元素都更大的的概率是1/j（假定元素唯一）
+  # 因此，我们更新最大值（包括初始化）的预期次数是 Hn=nΣj=1 1/j（著名的n调和数）
+  # Hn的运行时间是 O(log n)，也就是该算法最大值被更新的预期次数
+
+  # 4、前缀平均值
+  # 给出一个包含 n 个数的序列 S，想得到序列 A，满足的条件为：当 j=0..n-1 时，A[j]是 S[0..j] 的平均值
+  # 例如，给出一个公共资金的每年收益，投资者往往最关注一年、三年或者五年等的年平均收益
+  # 同样，给出一连串的日常网络使用日志，网站管理员可能希望能追踪不同时期的平均使用趋势
+  # 以下给出三种能用于解决这些问题的方法
+
+  # 5、二次时间算法
+  # 运行时间为 O(n^2)
+  def prefix_average1(S):
+    """ Return list such that, for all j, A[j] equals average of S[0]...S[j]. """
+    n = len(S)
+    A = [0] * n                         # O(n) create new list of n zeros
+    for j in range(n):                  # O(n)
+      total = 0
+      for i in range(j+1):              # O(n^2)
+        total += S[i]                   # equals to 1+2+3+...+n = n(n-1)/2
+      A[j] =  total / (j+1)             # record the average
+    return A
+
+  # 运行时间为 O(n^2)
+  def prefix_average2(S):
+    """ Return list such that, for all j, A[j] equals average of S[0]...S[j]. """
+    n = len(S)
+    A = [0] * n                         # O(n) create new list of n zeros
+    for j in range(n):
+      A[j] =  sum(S[0:j+1]) / (j+1)     # record the average
+
+  # 6、线性时间算法
+  # 在前两个算法中，对于每一个 j，都要对前缀和重新进行计算，每一个 j 都需要 O(j) 的运行时间，从而导致该算法运行时间变为二次
+  # 在以下算法中，动态保存当前的前缀和，只有一个 for 循环，用计数器 j 来约束
+  # 运行时间为 O(n)
+  def prefix_average3(S):
+    """ Return list such that, for all j, A[j] equals average of S[0]...S[j]. """
+    n = len(S)                          # O(1)
+    A = [0] * n                         # O(n) create new list of n zeros
+    total = 0                           # O(1)
+    for j in range(n):                  # O(n) loop
+      total += S[j]
+      A[j] = total / (j+1)
+    return A
+
+  # 7、三集不相交
+  # 给出三个序列，假定任意序列没有重复值，但不同序列间可以重复，确定三个序列的交集是否为空
+  # 假设最初序列每一个长度都为 n，在最坏情况下（序列内的每一个元素都要比较），该函数的运行时间为 O(n^3)
+  def disjoint1(A, B, C):
+    """ Retrurn True if there is no lement common to all three lists. """
+    for a in A:
+      for b in B:
+        for c in C:
+          if a == b == c:
+            return False
+    return True
+
+  # 在最坏情况下（序列 A 和 B 内的每个元素都相等），该函数的运行时间为 O(n^2)
+  # 在最好情况下（序列 A 和 B 内的每个元素都不相等），该函数的运行时间为 O(n)
+  # 该函数的总运行时间为 O(n^2)
+  def disjoint2(A, B, C):
+    """ Retrurn True if there is no lement common to all three lists. """
+    for a in A:
+      for b in B:
+        if a == b:
+          for c in C:
+            if a == c:
+              return False
+    return True
+  
+  # 8、元素唯一性
+  # 在最坏情况下，该函数的运行时间按比例增长到 (n-1)+(n-2)+...+2+1
+  # 该函数的总运行时间为 O(n^2)
+  def unique1(S):
+    """ Return True if there are no duplicate elemenets in sequence S. """
+    for j in range(len(S)):
+      for k in range(j+1, len(S)):
+        if S[j] == S[k]:
+          return False
+    return True
+  
+  # 9、以排序作为解决问题的工具：解决元素唯一性问题更优的一个算法
+  # 通过对序列的元素进行排序，为了确定是否有重复值，需要遍历该排序的序列，查看是否有连续的重复值
+  # 对序列排序后，可以保证在最坏情况下，该函数的运行时间为 O(n log n)
+  # 该函数的总运行时间为 O(n log n)
+  def unique2(S):
+    """ Return True if there are no duplicate elemenets in sequence S. """
+    temp = sorted(S)                    # create a sorted copy of S
+    for j in range(1, len(temp)):       # O(n) loop
+      if temp[j-1] == temp[j]:
+        return False                    # found duplicate pair
+    return True                         # if we reach this, elements were unique
+  ```
+
+  ##### 简单的证明技术
+
+  * 找反例
+  * 反证法（证明逆否命题）
+  * 归纳和循环不变量
+
+#### 第 4 章 递归

@@ -1460,3 +1460,51 @@
   * 归纳和循环不变量
 
 #### 第 4 章 递归
+
+在本章中，将从以下四个递归使用例证开始讲解，并给出了每个例证的实现：
+
+* 阶乘函数 n! 是一个经典的数学函数，它有一个固有的递归定义
+* 英式标尺具有的递归模式是分形结构的一个简单例子
+* 二分查找是最重要的计算机算法之一，在一个拥有数十亿以上条目的数据集中，它能有效定位所需的某个值
+* 计算机的文件系统有一个递归结构，在该结构中，目录能够以任意深度嵌套在其他目录上，递归算法被广泛用于探索和管理这些文件结构
+
+  ##### 说明性的例子
+
+  ```
+  # 1、阶乘函数
+  # 函数中不适用任何显式循环，迭代是通过函数的重复递归调用来实现的，每被调用一次参数就会变小一次，直到停止
+  # 递归跟踪：记录递归函数的执行过程，对于每个有效调用都有一个不同的活动记录，包含用来存储函数调用的参数和局部变量的命名空间
+  # 如果一个函数的执行导致嵌套函数的调用，前者调用的执行将被挂起，其活动记录将存储源代码中的位置（被调用函数返回后继续执行的控制流）
+  def factorial(n):
+    if n == 0:
+      return 1
+    else:
+      return n * factorial(n-1)
+  
+  # 2、绘制英式标尺
+  # 英式标尺模式是分型的一个简单示例，也就是具有在各级放大的自递归结构的形状
+  def draw_line(tick_length, tick_label=''):
+    """ Draw one lie with given tick length (followed by optional label). """
+    line = '-' * tick_length
+    if tick_label:
+      line += ' ' + tick_label
+    print(line)
+
+  def draw_interval(center_length):
+    """ Draw tick interval based upon a central tick length. """
+    if center_length > 0:
+      draw_interval(center_length - 1)
+      draw_line(center_length)
+      draw_interval(center_length - 1)
+  
+  def draw_ruler(num_inches, major_length):
+    """ Draw English ruler with given number of inches, major tick length. """
+    draw_line(major_length, '0')
+    for j in range(1, 1 + num_inches):
+      draw_interval(major_length - 1)
+      draw_line(major_length, str(j))
+
+  # 3、二分查找
+  
+  ```
+

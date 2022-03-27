@@ -1475,6 +1475,7 @@
   # 函数中不适用任何显式循环，迭代是通过函数的重复递归调用来实现的，每被调用一次参数就会变小一次，直到停止
   # 递归跟踪：记录递归函数的执行过程，对于每个有效调用都有一个不同的活动记录，包含用来存储函数调用的参数和局部变量的命名空间
   # 如果一个函数的执行导致嵌套函数的调用，前者调用的执行将被挂起，其活动记录将存储源代码中的位置（被调用函数返回后继续执行的控制流）
+  # 时间复杂度 O(n)，因为有 n+1 次函数的调用，所以每次调用占的操作次数为 O(1)
   def factorial(n):
     if n == 0:
       return 1
@@ -1505,6 +1506,76 @@
       draw_line(major_length, str(j))
 
   # 3、二分查找
-  
+  # 用于在有序序列中有效定位目标值，这是最重要的计算机算法之一，也是我们经常顺序存储数据的原因
+  # 序列无序：使用循环来检查每一个元素（顺序查找算法），在最坏情况下每个元素都需要检查，时间复杂度 O(n)
+  # 序列有序：使用二分查找算法，比较目标值和中间值的大小，重复此过程直到找到目标值，时间复杂度 O(log n)
+  def binary_search(data, target, low, high):
+    """ 
+    Return True if target is found in indicated portion of a Python list. 
+    The search only considers the portion from data[low] to data[high] inclusive.
+    """
+    if low > high:
+      return False                      # interval is empty; no match
+    else:
+      mid = (low + high) // 2
+      if target == data[mid]:
+        return True                     # found a match
+      elif target < data[mid]:
+        # recue on the portion left of the middle
+        return binary_search(data, target, low, mid-1)
+      else:
+        # recue on the portion right of the middle
+        return binary_search(data, target, mid+1, high)
+
+  # 4、文件系统
+  # 现代操作系统用递归的方式来定义文件系统目录（文件夹），操作系统允许嵌套任意深度的目录
+  # 计算嵌套在一个特定目录中的所有文件和目录的总磁盘使用情况的伪代码
+  Allorithm DiskUsage(path):
+    Input: A string designating a path to a file-system entry
+    Output: The cumulative disk space used by that entry and nested entries
+    total = size(path)                  # {immediate disk space used by the entry}
+    if path represents a directory then 
+      for each child entry stored within directory path do
+        total = total + DiskUsage(child)
+    return total
+
+  # Python 的操作系统模块
+  os.path.getsize(path)                 # 返回由字符串路径标识的文件或者目录使用的即时空间大小（字节）
+  os.path.isdir(path)                   # 如果字符串路径指定的条目是一个目录则返回 True 否则 False
+  os.listdir(path)                      # 返回一个字符串列表，它是字符串路径指定目录中所有条目的名称
+  os.path.join(path, filename)          # 生成路径字符串和文件名字符串，并使用当前操作系统分隔符分隔
+
+  # Python 实例
+  # 时间复杂度 O(n)
+  import os
+  def disk_usage(path):
+    """ Return the number of bytes used by a file/folder and any descendents. """
+    total = os.path.getsize(path)
+    if os.path.isdir(path):
+      for filename in os.listdir(path):
+        childpath = os.path.join(path, filename)
+        total += disk_usage(childpath)
+    print('{0:<7}'.format(total), path)
+    return total                        # 完成该路径下的所有路径的递归调用，再返回累计磁盘空间大小
   ```
+
+  ##### 递归的其余例子
+
+  ```
+  # 1、线性递归
+  # 如果一个递归函数主体的每个调用至多执行一个新的递归调用，就称为线性递归（任何递归追踪均为单一调用序列）
+  # 例如二分查找也是线性递归的一个例子，两个分支中均产生递归调用，但在一次执行期间只有其中一个调用被执行
+
+  # 元素序列的递归求和，时间复杂度 O(n)
+  def linear_sum(S, n):
+    """ Return the sum of the first n numbers of sequence S. """
+    if n == 0:
+      return 0
+    else:
+      return linear_sum(S, n-1) + S[n-1]
+
+  # 使用线性递归逆置序列
+  def reverse(S, start, stop)
+  ```
+  
 

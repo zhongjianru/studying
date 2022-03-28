@@ -1574,8 +1574,129 @@
     else:
       return linear_sum(S, n-1) + S[n-1]
 
-  # 使用线性递归逆置序列
-  def reverse(S, start, stop)
+  # 使用线性递归逆置（翻转）序列，时间复杂度 O(n)
+  def reverse(S, start, stop):
+    """ Reverse elements in implicit slice S[start:stop]. """
+    if start < stop - 1:
+      S[start], S[stop-1] = S[stop-1], S[start]
+      reverse(S, start+1, stop-1)
+
+  # 用于计算幂的递归算法，时间复杂度 O(n)，递归深度 O(n)，激活记录同时被存储在内存中
+  def power(x, n):
+    """ Compute the value x**n for integer n. """
+    if n == 0:
+      return 1
+    else:
+      return x * power(x, n-1)
+
+  # 使用重复的平方计算幂函数，时间复杂度 O(log n)，递归深度 O(log n)，所用内存 O(log n)
+  # 当 n 为奇数时，x^n=x*power(x,n//2)^2；当 n 为偶数时，x^n=power(x,n//2)^2
+  def power(x, n):
+    """ Compute the value x**n for integer n. """
+    if n == 0: 
+      return 1
+    else:
+      partial = power(x, n//2)
+      result = partial * partial
+      if n % 2 == 1:
+        result *= x
+      return result
+
+  # 2、二路递归（一个函数执行两个递归调用，例如上例绘制英式标尺）
+  # 在有两个或者更多元素的情况下，可以递归地计算前一半元素的总和和后一半元素的综合，然后把两部分加起来
+
+  # 用二路递归计算一个序列的元素之和，空间复杂度 O(log n)
+  def binary_sum(S, start, stop):
+    """ Return the sum of the numbers in implicit slice S[start:stop]. """
+    if start >= stop:
+      return 0
+    elif start == stop - 1:
+      return S[start]
+    else:
+      mid = (start + stop) // 2
+      return binary_sum(S, start, mid) + binary_sum(S, mid, stop)
+
+  # 3、多重递归（一个函数执行两个以上递归调用，例如上例计算文件磁盘空间）
+  # 通过枚举和测试所有可能的配置来解决组合谜题
+  Algorithm PuzzleSolve(k, S, U):
+    Input: An integer k, sequence S, and set U
+    Output: An enumeration of all k-length extensions to S using elements in U
+      without repetitions
+    for each e in U do
+      Add e to the end of S
+      Remove e from U                   # {e is now being used}
+      if k == 1 then 
+        Test whether S is a configuration that solves the puzzle
+        if S solves the puzzle then 
+          return "Solution found: " S
+        else
+          PuzzleSolve(k-1, S, U)        # {a recursive call}
+        Remove e from the end of S 
+        Add e back to U                 # {e is now considered as unused}
   ```
   
+  ##### 设计递归算法
+
+  一般来说，使用递归的算法通常具有以下形式：
+  * 对于基本情况的测试
+    首先测试一组基本情况（至少应该有一个）。
+    这些基本情况应该被定义，以便每个可能的递归调用链最终会达到一种基本情况，并且每个基本情况不应使用递归。
+  * 递归
+    如果不是一种基本情况，则执行一个或多个递归调用。
+    这个递归步骤可能包括一个测试，该测试决定执行哪几种可能的递归调用。
+    应该定义每个可能的递归调用，以便使调用向一种基本情况靠近。
+
+  参数化递归：
+  * 考虑可以定义的子问题的不同方式，该子问题与原始问题有着相同的总体结构
+  * 一个成功的递归设计有时需要重新定义原来的问题，以便找到看起来相似的子问题（参数化函数的特征码）
+  * 创建一个有简介接口的公共函数，然后让它的函数体调用一个非公共的效用函数（含有所希望的递归参数）
+
+  ##### 消除尾递归
+
+  算法设计的递归方法：
+  * 主要优点：能够简洁地利用重复结构呈现诸多问题
+  * 递归的可用性要基于合适的成本
+  * 通过管理递归结构自身的嵌套，而不是依赖于解释器，从而把递归算法转换成非递归算法
+  * 更好的情况是，递归的某些形式可以在不适用任何辅助存储空间的情况下被消除（尾递归）
+
+  尾递归：
+  * 执行的任何递归调用是在这种情况下的最后操作
+  * 通过封闭递归，递归调用的返回值（如果有的话）立即返回
+  * 一个尾递归必须是线性递归（因为如果必须立即返回第一个递归调用的结果，将无法进行第二次递归调用）
+  * binary_search 和 reverse 函数均是尾递归的例子，虽然其他几个线性递归很想尾递归，但技术上并不如此
+  * 在重复循环中，通过封闭函数体并重新分配现存参数以及用新的参数来代替一个递归调用，任何尾递归都可以被非递归地重新实现
+  * 即使许多其他线性递归不是正式的尾递归，它们也可以非常有效地使用迭代来表达
+
+  ```
+  # 二分查找算法（非递归实现）
+  def binary_search_iterative(data, target):
+    """ Return True if target is found in the given Python list. """
+    low = 0
+    high = len(data) - 1
+    while low <= high:
+      mid = (low + high) // 2
+      if target == data[mid]:
+        return True
+      elif target < data[mid]:
+        high = mid - 1                  # only changes this line
+      else:
+        low = mid + 1
+    return False
+
+  # 使用迭代逆置一个序列的元素（非递归实现）
+  def reverse_iterative(S):
+    """ Reverse elements in sequence S. """
+    start, stop = 0, len(S)
+    while start < stop - 1:
+      S[start], S[stop-1] = S[stop-1], S[start]
+      start, stop = start + 1, stop - 1
+  ```
+
+#### 第 5 章 基于数组的序列
+
+  ##### Python 序列类型
+
+  * 列表类（list）
+  * 元组类（tuple）
+  * 字符串类（str）
 

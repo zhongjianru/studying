@@ -1730,3 +1730,163 @@
   * 一个列表实例可能会以多个指向同一个对象的引用作为列表元素，一个对象也可能被多个列表元素所指向
 
   浅拷贝与深拷贝：
+  * 浅拷贝：backup = list(primes) 对原列表复制出一个新列表，新列表即为浅拷贝，和原列表指向同样的元素（列表元素不可变时）
+  * 深拷贝：backup = deepcopy(primes) 得到一个具有全新元素的新列表（列表元素可变时）
+
+  列表引用性质：
+  * backup = extend(primes) 将一个列表的所有元素添加到另一个列表的末尾
+  * 扩展列表的过程不是将元素复制过来，而是将元素的引用复制到末尾
+
+  紧凑数组：
+  * 字符串是用字符数组表示的（而不是数组的引用）
+  * 更直接的表示方式：紧凑数组，因为数组存储的是位，这些位表示原始数据（在字符串情况下，这些位即是字符）
+  * 使用紧凑结构会占用更少的内存，因为在内存引用序列的显示存储上没有开销（原始数据除外）
+  * 引用结构通常会将 64 位地址存入数组，无论存储单个元素的对象有多少位
+  * 字符串中的每个 Unicode 字节存储在紧凑数组中仅需要两个字节
+  * 紧凑结构在高性能计算方面的另一个重要优势是，原始数据在内存中是连续存放的
+
+  ##### 动态数组和摊销
+
+  * 在计算机系统中，创建低层次数组时，必须明确声明数组的大小，以便系统为其存储分配连续的内存
+  * 由于系统可能会占用相邻的内存位置去存储其他数据，因此数组大小不能靠扩展内存单元来无限增加
+  * 虽然列表在被构建时已经有确定的长度，但该类允许对列表增添元素，依赖一种算法技巧，即动态数组
+  * 一个列表通常关联着一个底层数组，并且长度比列表的长度更长，通过利用数组的下一个可用单元，很容易增添列表元素
+  * 假如所有预留单元被耗尽，列表会请求一个新的更大的数组，并初始化该数组，使其前面部分能和原来数组一样，旧的数组被回收
+
+  ```
+  # 列表长度和底层大小关系
+  import sys
+  data = []
+  for k in range(n):
+    a = len(data)
+    b = sys.getsizeof(data)
+    print('Length: {0:3d}; Size in bytes: {1:4d}'.format(a,b))
+    data.append(None)
+
+  # 测量列表类增添操作的摊销话费花费 
+  from time import time
+  def compute_average(n):
+    "" Perform n appends to an empty list and return average time elapsed. """
+    data = []
+    start = time()
+    for k in range(n):
+      data.append(None)
+    end = tiem()
+    return (end - start) / n
+  ```
+
+  ##### 使用基于数组的序列
+
+  ```
+  # 表示游戏条目
+  class GameEntry:
+    """ Represents one entry of a list of high scores. """
+
+    def __init__(self, name, score):
+      self._name = name
+      self._score = score
+
+    def get_name(self):
+      return self._name
+
+    def get_score(self):
+      return self._score
+
+    def __str__(self):
+      return '({0}. {1}).'format(self._name, self._score)
+
+  # 存储高分
+  class Sccoreboard:
+    """ Fixed-length sequence of high scores in nondecreasing order. ""
+
+    def __init__(self, capacity=10):
+      """ Initialize scoreboard with given maximum capacity. All entries are initially None. """
+
+      self._board = [None] * capacity
+      self._n = 0
+
+    def __getitem__(self, k):
+      """ Return entry at index k. """
+      return self._board[k]
+
+    def __str__(self):
+      """ Return string representation of the high score list. """
+      return '\n'.join(str(self._board[j]) for j in range(self._n))
+
+    def add(self, entry):
+      """ Consider adding entry to high scores. """
+      score = entry.get_score()
+
+      # Does new entry qualify as a high score?
+      # answer is yes if board not full of score is higher than last entry
+      good = self._n < len(self._board) or score > self._board[-1].get_score()
+      if good:
+        if self._n < len(self._board):            # no score drops from list
+          self._n += 1                            # so overall number increases
+        
+        # shift lower scores rightward to make room for new entry
+        j = self._n - 1
+        while j > 0 and self._board[j-1].get_score() < score:
+          self._board[j] = self._board[j-1]       # shift entry from j-1 to j
+          j -= 1                                  # and decrement j
+        self._board[j] = entry                    # when done, add new entry
+
+  # 插入排序
+  def insertion_sort(A):
+    """ Sort list of comparable elements into nondecreasing order. """
+    for k in range(1, len(A)):
+      cur = A[k]                                  # current element to be inserted
+      j = k                                       # find correct index j for current
+      while j > 0 and A[j-1] > cur:               # element A[j-1] must be after current
+        A[j] = A[j-1]
+        j -= 1
+      A[j] = cur                                  # cur is now in the right place
+
+  # 简单密码技术：凯撒密码（用固定数目后的字母进行替换）
+  class CaesarCipher:
+    """ Class for doing encryption and decryption using a Caesar cipher. """
+
+    def __init__(self, shift):
+      """ Construct Caesar cipher using given integer shift for rotation. """
+      encoder = [None] * 26                       # temp array for encryption
+      decoder = [None] * 26                       # temp array for decryption
+      for k in range(26):
+        encoder[k] = chr((k + shift) % 26 + ord('A'))
+        decoder[k] = chr((k - shift) % 26 + ord('A'))
+      self._forward = ''.join(encoder)
+      self._backward = ''.join(decoder)
+
+    def encrypt(self, message):
+      """ Return string representing encrypted message. """
+      return self._transform(message, self._forward)
+
+    def decrypt(self, secret):
+      """ Return decrypted message given encrypted secret. """
+      return self._transform(secret, self._backward)
+
+    def transform(self, original, code):
+      """ Utility to perform transformation based on given code string. """
+      msg = list(original)
+      for k in range(len(msg)):
+        if msg[k].isupper():
+          j = ord(msg[k]) - ord('A')
+          msg[k] = code[j]
+      return ''.join(msg)
+
+    if __name__ == '__main__':
+      cipher = CaesarCipher(3)
+      message = "THE EAGLE IS IN PLAY; MEET AT JOE'S."
+      coded = cipher.encrypt(message)
+      print('Secret:', coded)
+      answer = cipher.decrypt(coded)
+      print('Message:', answer)
+  ```
+
+  ##### 多维数据集
+
+  ```
+  # 实例化二维数组，确保原始列表的每个单元都能指向一个独立的二级列表
+  data = [ [0] * c for j in range(r) ]
+  ```
+
+#### 第 6 章 栈、队列和双端队列

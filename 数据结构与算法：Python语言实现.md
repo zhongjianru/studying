@@ -1864,7 +1864,7 @@
       """ Return decrypted message given encrypted secret. """
       return self._transform(secret, self._backward)
 
-    def transform(self, original, code):
+    def transform(self, original, code):   
       """ Utility to perform transformation based on given code string. """
       msg = list(original)
       for k in range(len(msg)):
@@ -1890,3 +1890,127 @@
   ```
 
 #### 第 6 章 栈、队列和双端队列
+
+  ##### 栈
+
+  栈的定义：
+  * 由一系列对象组成的一个集合，这些对象的插入和删除操作遵循先进后出的原则（LIFO）
+  * 可以在任何时刻向栈中插入一个对象，但只能取得或者删除最后一个插入的对象（栈顶）
+  * 浏览器将最近浏览的网址存放在一个栈中，新访问的网址被压入栈顶，用户点击后退按钮就弹出最近访问的地址
+  * 文本编辑器的撤销功能就是将通过文本的变化状态保存在一个栈中得以实现的
+
+  栈的抽象数据类型（ADT）：
+  * S.push(e)：将元素 e 添加到栈 S 的栈顶
+  * S.pop(e)：从栈 S 中移除并且返回栈顶的元素（若栈是空的，将返回报错）
+  * S.top()：在不移除栈顶元素的前提下，返回栈顶元素（若栈是空的，将返回报错）
+  * S.is_empty()：如果占中不包含任何元素，则返回 True
+  * len(S)：返回栈中元素的数量
+
+  ```
+  # 用 Python 的 list 类实现一个栈
+  # 1、Empty 异常类定义
+  class Empty(Exception):
+    """ Error attempting to access an element from an empty container. """
+    pass
+
+  # 2、栈实现
+  class ArrayStack:
+    """ LIFO Stack implementation using a Python list as underlying storage. """
+
+    def __init__(self):
+      """ Create an empty stack. """
+      self.data = []                    # nonpublic list instance
+
+    def __len__(self):
+      """ Return the number of elements in the stack. """
+      return len(self._data)
+
+    def is_empty(self):
+      """ Return True if the stack is empty. """
+      return len(self._data) == 0
+
+    def push(self, e):
+      """ Add element e to the top of the stack. """
+      self._data.append(e)              # new item stored at end of list
+
+    def top(self):
+      """ Return (but do not remove) the element at the top of the stack. 
+          Raise Empty exception if the stack is empty. 
+      """
+      if self.is_emppty():
+        raise Empty('stack is empty')
+      return self._data[-1]             # the last item in the list
+
+    def pop(self):
+      """ Remove and return the element from the top of the stack (i.e. LIFO). 
+          Raise Empty exception if the stack is empty. 
+      """
+      if self.empty()"
+        raise Empty('Stack is empty')
+      return self._data.pop()           # remove last item from list
+
+    # 作为一个栈的替代模型，可能希望构造函数接受一个用于指定堆栈最大容量的参数，并初始化数据成员列表长度
+    # 栈的长度不再是列表长度的同义词，并且对栈的 push 和 pop 也不再需要改变列表长度
+    # 建议单独维护一个整数作为实例变量，以表示当前栈中元素的个数
+
+    # 3、使用栈实现文件内容的逆置
+    # 先替换换行符，再重新插入换行符：是为了处理一种特殊情况，在原始文件的最后一行没有换行符
+    def reverse_file(filename):
+      """ Overwrite given file with its contents line-by-line reversed. """
+      S = ArrayStack()
+      original = open(filename)
+      for line in original:
+        S.push(line.rstrip('\n'))
+      original.close()
+
+      output = open(filename,'w')
+      while not S.is_empty():
+        output.write(S.pop() + '\n')
+      output.close()
+
+    # 4、在算术表达式中的分隔符匹配算法
+    def is_matched(expr):
+      """ Return True if all delimiters are properly match: False otherwise. """
+      lefty = '({['
+      righty = ')}]'
+      S = ArrayStack()
+      for c in expr:
+        if c in lefty:
+          S.push(c)
+        elif c in righty:
+          if S.is_empty():
+            return False
+          if righty.index(c) != lefty.index(S.pop()):
+            return False
+      return S.is_empty()
+
+    # 5、HTML 的标签匹配
+    def is_matched_html(raw):
+      """ Return True if all HTML tags are properly match; False otherwise. """
+      S = ArrayStack()
+      j = raw.find('<')
+      while j != -1:
+        k = raw.find('>', j+1)
+        if k == -1:
+          return False
+        tag = raw[j+1:k]
+        if not tag.startswith('/)       # this is opening tag
+          S.push(tag)
+        else:
+          if S.is_empty():
+            return False
+          if tag[1:] != S.pop()
+            return False
+        j = raw.find('<', k+1)
+      return S.is_empty()
+  ```
+
+  ##### 队列
+
+  队列的定义：
+  * 由一系列元素组成的集合，这些对象的插入和删除遵循先进先出的原则（FIFO）
+  * 元素可以在任何时刻进行插入，但是只有处在队列最前面的元素才能被删除
+  * 队列中允许插入的一端称为队尾，允许删除的一端称为队头（排队进入游乐场）
+
+  队列的抽象数据类型（ADT）：
+  * Q.enqueue(e)：向队列 Q 的队尾添加一个元素

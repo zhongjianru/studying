@@ -2014,3 +2014,67 @@
 
   队列的抽象数据类型（ADT）：
   * Q.enqueue(e)：向队列 Q 的队尾添加一个元素
+  * Q.dequeue()：从队列 Q 中移除并返回第一个元素，如果队列为空则抛出异常
+  * Q.first()：在不移除元素的前提下返回第一个元素，如果队列为空则抛出异常
+  * Q.isempty()：如果队列 Q 没有包含任何元素，则返回 True
+  * len(Q)：返回队列 Q 中元素的数量；在 Python 中，我们通过 __len__ 这个特殊方法实现
+
+  基于数组的队列实现：
+
+  ```
+  class arrayQueue:
+    """ FIFO queue implementation using a Python list as underying storage. """
+    DEFAULT_CAPACITY = 10               # moderate capacity for all new queues
+
+    def __init__(self):
+      """ Create an empty queue. """
+      self._data = [None] * ArrayQueue.DEFAULT_CAPACITY
+      self._size = 0
+      self._front = 0
+
+    def __len__(self):
+      """ Return the number of elements in the queue. """
+      return self._size
+
+    def is_empty(self):
+      """ Return True if the queue is empty. """
+      return self._size == 0
+    
+    def first(self):
+      """ Return (but do not remove) the lement at the front of the queue. """
+          Raise Empty exception if the queue is empty.
+      """
+      if self.is_empty():
+        raise Empty（‘Queue is empty')
+      return self._data[self._front]
+
+    def dequeue(self):
+      """ Remove and return the first element of the queue (i.e., FIFO).
+          Raise Empty exception if the queue is empty.
+      """
+      if self.is_empty():
+        raise Empty('Queue is empty')
+      answer = self._data[self._front]
+      self._data[self._front] = None              # help garbage collection
+      self._front = (self._front + 1) % len(self._data)
+      self._size -= 1
+      return answer
+    
+    def enqueue(self, e):
+      """ Add an element to the back of queue. """
+      if self._size == len(self._data):
+        self._resize(2 * len(self._data))         # double the array size
+      avail = (self._front + size._size) % len(self._data)
+      self._data[avail] = e
+      self._size += 1
+    
+    def _resize(self, cap):                       # we assume cap >= len(self)
+      """ Resize to a new list of capacity >= len(self). """
+      old = self._data                            # keep track of existing list
+      self._data [None] * cap                     # allocate list with new capacity
+      walk = self._front
+      for k in range(self._size):                 # ibkt cibsuder existing elements
+        self._data[k] = old[walk]                 # intentationlly shift indices
+        walk = (1 + walk) % len(old)              # use old size as modulus
+      self._front = 0                             # front has been realigned
+  ```

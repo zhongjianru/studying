@@ -336,6 +336,7 @@ println("Counter value: " + counter)
 
 // 将 data 转换成 RDD，再来重新计数，计数结果为 0
 // 因为计算都不在本地，每个 RDD 操作都会被转换成 Job 分发至集群的执行器进程上运行，与 Driver 属于不同进程
+// 在序列化时，Spark 会将 Job 运行所依赖的变量、方法（称为闭包）全部打包在一起序列化，相当于它们的一份副本
 // 在执行过程中，只是计算节点上的计数器会自增，而 Driver 程序中的变量则不会发生变化
 var counter = 0
 val data = Seq(1, 2, 3)
@@ -417,3 +418,227 @@ $ ./bin/spark-submit \
 ### 第3章 Spark 工作机制
 
 #### 调度管理
+
+##### 集群概述及名词解释
+
+集群模式下的 Spark 程序运行：
+            -------------工作节点--执行器+缓存
+Driver 程序  --集群管理器/\
+SparkContext-------------工作节点--执行器+缓存
+
+Driver 程序：
+* 用户编写的 Spark 程序
+* 每个 Driver 程序包含一个代表集群环境的 SparkContext 对象并与之连接
+* 程序的执行从 Driver 程序开始，中间会调用 RDD 操作，通过集群资源管理器来执行调度
+* 操作一般在 Worker 节点上执行，所有操作执行结束后回到 Driver 程序中并结束
+
+SparkContext 对象：
+* 每个驱动程序里都有一个，担负着与集群沟通的职责
+* SparkContext 对象联系集群管理器（dluster manager）分配 CPU 和内存等资源
+* 集群管理器在工作节点（Worker Node）上启动一个执行器（专属于本驱动程序）
+* SparkContext 分发粪污（Task）至各执行器执行
+
+集群管理器：
+* Standalone 模式：资源管理器是 Master 节点
+* Hadoop YARN 模式：资源管理器是 YARN 集群（非常适合多个集群同时部署的场景，是目前最主流的资源管理系统）
+* Apache Mesos：资源管理器是 Mesos 集群（高仿谷歌内部的资源管理系统 Borg 实现的）
+
+涉及名词解释：
+* Allocation：分配
+* App/Application/Spark程序：泛指用户编写的运行在 Spark 上的程序（不仅是 Scala 语言，其他支持的语言也是）
+* 节点/Worker节点：集群上的计算节点，一般对应一台物理机，尽在测试时会在一台物理机器上启动多个节点
+* Worker：每个节点上会启动一个进程，负责管理本节点，运行 jps 命令可以看到 Worker 进程在运行
+* core：Spark 标识 CPU 资源的方式，对应一个或多个物理 CPU 核心，每个 Task 运行时至少需要一个 core
+* 执行器：每个 Spark 程序在每个节点上启动的一个进程，专属于一个 Spark 程序，负责在该节点上启动的一个 Task
+* Job：一次 RDD Action 对应一个 Job，会提交至资源管理器调度执行
+* Stage：Job 在执行过程中被分为多个阶段，介于 Job 和 Task 之间，是按 Shuffle 分隔的 Task 集合
+* Task：在执行器执行的最小单元。比如 RDD Tranformation 操作时对 RDD 内每个分区的计算都会对应一个 Task
+
+##### Spark 程序之间的调度
+
+* 静态分配：Spark 程序启动时即一次性分配所有资源，运行过程中固定不变，直到程序退出
+* 动态分配：运行过程中不断调整分配的资源，可以按需增加或减少（比静态分配复杂得多，需要在实践中不断调试）
+
+静态资源分配：
+* 所有的集群管理器都支持静态分配
+* 每个 Spark 程序都分配一个最大可用的资源数量，而且在程序运行的整个过程中都持有它
+* Standalone 模式：按照先进先出（FIFO）的顺序执行程序
+* Mesos：限制每个进程的最大 core 使用量和内存的使用
+* YARN：限制最多分配的执行器的数量
+
+动态资源分配：
+* 分配给 Spark 程序的资源可以增加或减少，意味着程序可能会在不适用资源的时候将资源还给集群，需要时再从集群申请
+* 动态资源分配的粒度是执行器，即增加或减少执行器，意味着为 Spark 程序服务的节点数据量的增加或减少
+* 这个特性当前只有在 YARN 模式下才可以使用
+
+资源分配策略：
+请求策略：
+* 开启动态资源分配之后，当 Spark 程序有 Task 初遇排队待调度时，会请求额外的执行器资源
+* 说明现有的执行器不足以让所有尚未执行完的 Task 的并发达到饱和
+* 实际请求的触发是在当排队 Task 已经等待了 Timeout 秒后，只要还有排队的 Task，就每隔 Timeout 秒请求一次
+* Spark 会一致循环请求执行器资源，每一轮请求的执行器总数量会呈指数增长，1、2、4、6、8 以此推类
+* 指数增长策略的原因：刚开始时申请的执行器应该谨慎一些，如果程序真的需要放多执行器，应该可以及时获取到
+
+移除策略：
+* 当 Spark 程序的某个执行器处于空闲状态的时间超过 Timeout 秒，之后就会被移除
+* 在大部分情况下，这个条件与请求的条件是互斥的，即当有 Task 在等待执行时，是没有空闲执行器的
+
+执行器的优雅退出：
+* Spark 需要一种在执行器优雅退出之前保存执行器状态的机制
+* 这个需求对于 shuffle 特别重要
+* 在 shuffle 期间，Spark 执行器首先将 map 结果写入本地磁盘，作为一个服务来运行，其他执行器请求访问这些数据时进行响应
+* 但是对于哪些执行时间远超过同伴的 Task 来说，动态分配可能会在 shuffle 结束之前移除这个执行器，这样就需要无谓的重新计算
+* 保存 shuffle 文件的方法是使用一个外部的 shuffle 服务，指向一个长期运行的进程，在集群的每个节点上都会独立运行
+* Spark 执行器会从这些服务获取 shuffle 文件，而不是其他执行器，意味着执行器写的任何 shuffle 状态在执行器退出之后还可以保留
+
+##### Spark 程序内部的调度
+
+* 不同线程提交的 Job 可以并行执行，Spark 调度器是线程安全的，可以支持这种需要同时处理多个请求的服务型应用
+* 默认情况下：Spark 调度器以 FIFO 的方式运行 Job，每个 Job 分成多个 Stage（比如 map 和reduce 阶段）
+* 在公平共享方式下：Spark 采用循环的方式为不同 Job 之间的 Task 分配资源，这样所有的 Job 可以获取差不多相同的资源
+* 这就意味着，当有长时间的 Job 在运行时，短时间的 Job 在提交之后也可以马上运行，而不用等长时间 Job 结束，特别适合多用户场景
+
+公平调度池：
+* 支持对多个 Job 进行分组，这个分组称为调度池，每个调度池可以设置不同的调度选项
+* 可以为不同的用户设置不同的调度池，然后让各个资源池平等地共享资源，而不是按 Job 来共享资源
+* 不做设置的话，新提供的 Job 会自动进入默认调度池，也可以指定 Job 进入哪个调度池
+
+调度池的默认行为：
+* 默认情况下，所有调度池平均共享集群的资源
+* 但在每个调度池内部，各个 Job 是按照 FIFO 的顺序来执行的
+
+```
+// Standalone 模式属性
+spark.cores.max
+spark.deploy,defaultCores
+spark.executor.memory
+
+// Mesos 属性
+spark.mesos.coarse=true
+spark.cores.max
+spark.executor.memory
+
+// YARN 属性
+--num-executors
+--executor-memory
+--executor-cores
+
+// 动态共享 CPU 核心资源
+spark.executor
+spark.mesos.coarse=true
+
+// 动态资源分配
+spark.dynamicAllocation.enabled=true
+spark.shuffle.service.enabled=true
+
+// 公平共享资源调度
+spark.scheduler.mode=FAIR
+
+// 设置调度池（按线程设置，可以让线程下的所有 Job 都在同一个用户下）
+spark.scheduler.pool=pool1
+
+// 清空当前线程的调度池设置
+spark.scheduler.pool=null
+
+// 调度池配置文件恩建
+<?xml version="1.0"?>
+<allocations>
+  <pool name="production">
+    <schedulingMode>FAIR</schedulingMode>
+    <weight>1</weight>
+    <minShare>2</minShare>
+  </pool>
+  <pool name="test">
+    <schedulingMode>FIFO</schedulingMode>
+    <weight>2</weight>
+    <minShare>3</minShare>
+  </pool>
+</allocations>
+```
+
+#### 内存管理
+
+相比 Hadoop MapReduce 来说，Spark 具有巨大的性能优势：
+* Spark 对于内存的充分利用
+* 提供的缓存机制
+
+RDD 持久化：
+* 持久化早起被称为缓存，但缓存一般指将内容放在内存中
+* 在内存不够时可以用磁盘顶上去，也可以选择不使用内存，而是仅仅保留到磁盘中
+* 如果一个 RDD 布置一次备用到，就可以持久化它，这样可以大幅提升程序的性能，避免重复计算
+* 这也是 Spark 刚出现时被称为内存计算的原因
+
+共享变量原因：
+* Spark 程序的大部分操作都是 RDD 操作，通过传入函数给 RDD 操作函数来计算
+* 这些函数在不同的节点上并发执行，内部的变量有不同的作用于，不能互相访问
+
+共享变量分类：
+* 广播变量：只读（创建之后再更新值是没有意义的）
+* 计数器：只能增加，只有 Driver 程序可以读计算器变量（RDD 操作中读取是无意义的）
+
+```
+// 持久化
+RDD.persisi()
+
+// 删除持久化
+RDD.unpersist()
+
+// 创建广播变量
+scala> val broadcastVar = sc.broadcast(Array(1, 2, 3))
+scala> broadcastVar.value  // 输出值
+
+// 创建计数器
+scala> val accum = sc.accumulator(0, "My Accumulator")
+scala> sc.parallelize(Array(1, 2, 3, 4)).foreach(x => accum += x)
+scala> accum.value  // 输出值
+```
+
+#### 容错机制
+
+分布式系统通常在一个机器集群上运行，同时运行的几百台机器中出问题的概率很大，所以容错设计是分布式系统的一个重要能力。
+
+容错体系概述：
+* MapReduce 将计算转换为一个有向无环图（DAG）的任务集合，这样可以通过重复执行 DAG 里的一部分任务来完成容错恢复
+* 但是由于主要的数据存储在 HDFS 中，容错过程需要在网络上进行数据复制，从而增加了大量的消耗
+* 所以，分布式编程中经常需要做检查点，即将某个时机的中间数据写到存储（通常是 HDFS）中
+
+Spark 容错体系：
+* RDD 也是一个 DAG，每一个 RDD 都会记住创建该数据集需要哪些操作，跟踪记录 RDD 的继承关系（lineage）
+* 创建 RDD 的操作是相对粗粒度的变换，即单一的操作应用于许多数据元素，不需要存储真正的数据（比通过网络复制数据更高效）
+* 当一个 RDD 的某个分区丢失时，RDD 有足够的信息记录其如何通过其他 RDD 进行计算，且只需重新计算该分区
+
+RDD 之间的依赖：
+* 窄依赖：父分区对应一个子分区（只需要通过重新计算丢失的那一块数据来恢复，容错成本较小）
+* 宽依赖：父分区对应多个子分区（父分区数据只有一部分是需要重算子分区的，其余数据重算造成冗余计算）
+* 所以，不同的应用有时候也需要在适当的时机设置数据检查点，RDD 的之独特性使它比常用的共享内存更容易做检查点
+* Kafka 和 Flume 这样的数据源，接收到的数据只在数据被预写到日志以后，接收器才会受到确认消息
+* 这样，所有的数据要不从日志中恢复，要不由数据源重发，实现了零丢失
+
+Spark Master的容错：
+* Standalone 集群模式：通过 ZooKeeper 来完成，即有多个 Master，一个角色是 Active，其余角色是 Standby
+* 单点模式：当 Master 进程异常时，重启 Master 进程并从错误中恢复
+
+Slave 节点失效：
+* Worker 异常退出：现将自己启动的执行器停止，Driver 需要有响应的程序来重启 Worker 进程
+* 执行器异常退出：Driver 会将注册的执行器删除，Worker 受到指令，再次启动执行器
+* Driver 异常退出：一般使用检查点重启 Driver，重新构造上下文并重启接收器
+
+#### 监控管理
+
+* Web 界面 / REST API
+* Metrics
+* 外部系统
+
+#### Spark 程序配置管理
+
+* 环境变量
+* 配置文件
+* 命令行参数
+* 直接在 Spark 程序中指定
+* 配置 Spark 日志
+
+不同的配置方式有不同的优先级，可以相互覆盖，而且这些配置属性在 Web 界面中可以直接看到。
+
+### 第4章 Spark 内核讲解
+
+#### Spark 核心数据结构 RDD

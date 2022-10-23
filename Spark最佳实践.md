@@ -642,3 +642,450 @@ Slave 节点失效：
 ### 第4章 Spark 内核讲解
 
 #### Spark 核心数据结构 RDD
+
+RDD 含义：
+* 弹性分布式数据集（Resilient Distributed Dataset）
+
+分布存储：
+* RDD 里面的成员被水平切割成小的数据块，分散在集群的多个节点上，便于对数据进行并行计算
+
+弹性：
+* RDD 分布是弹性的，不是固定不变的
+* 操作：有些操作可以被拆分成对各个数据块直接计算，不涉及其他节点，比如 map，但是有些操作比如访问所有数块
+* 高可靠性
+
+只读：
+* RDD 一旦生成，内容就不能修改了
+* 好处是让整个系统的设计相对简单，比如并行计算时不用考虑数据互斥的问题
+
+缓存：
+* RDD 可指定缓存在内存中
+* 一般计算都是流水式生成和使用 RDD，新的 RDD 生成后，旧的不再使用，并被 Java 虚拟机回收掉
+* 但如果后续有多个计算依赖某个 RDD，可以将 RDD 花村在内存中，避免重复计算
+
+计算：
+* RDD 可以通过计算重新得到
+* RDD 的高可靠性不是通过复制来实现的，而是通过记录足够的计算过程，在需要时（比如因为节点故障导致内容失效）重新计算来恢复的
+
+RDD 核心属性：
+* 一个分区列表：每个分区里是 RDD 的部分数据（或称数据块）
+* 一个依赖列表：存储依赖的其他 RDD
+* 一个计算函数：名为 compute，用于计算 RDD 各分区的值
+* 分区器（可选）：用于键值类型的 RDD，比如某个 RD 是按三列来分区
+* 计算各分区时优先的位置列表（可选）：比如从 HDFS 上的文件生成 RDD 时，优先选择数据所在的节点，可以避免数据移动带来的开销
+
+```
+// 1、分区
+// 依赖关系定义在一个 Seq 数据集中，类型是 Dependency
+// 有检查点时，这些信息会被重写，指向检查点
+private var dependencies_ : Seq[Dependency[_]] = null
+
+// 2、依赖
+// 分区定义在 Array 数据中，类型是 Partition，没用 Seq，主要是考虑到随时通过下标来访问或更新分区内容
+// 而 dependencies_ 使用 Seq 是因为它的使用场景以便是取第一个成员或遍历
+@transient private var partiitons_ : Array[Partition] = null
+
+// 3、计算函数：由子类来实现，对输入的 RDD 分区进行计算
+def compute(split: Partition, context: TaskContext): Iterator[T]
+
+// 4、分区器：子类可以重写以指定新的分区方式
+// Spark 支持两种分区方式：Hash 和 Range
+@transient var partitioner: Option[Partitioner] = None
+
+// 5、优先计算位置：子类可以指定分区优先的位置，让分区尽可能与数据在相同的节点上
+protected def getPreferredLocations(split: Partition): Seq[String] = Nil
+// RDD 提供统一的调用方法，统一处理检查点问题
+final def preferredLocations(split: Partitions): Seq[String] = {
+    checkpointRDD.ma(_.getPreferedLocations(split)).getOrElse {
+        getPreferredLocations(split)
+    }
+}
+
+// 6、RDD 的 Transformation
+// 每个 Transformation 操作都会生成一个新的 RDD，不同操作也可能范返回相同类型的 RDD，只是计算方法等参数不同
+// 比如，map、flapMap、filter 这三个操作都会生成 MapPartitionsRDD 类型的 RDD
+
+// Transformation: map
+def map[U: ClassTag](f: T => U): RDD[U] = withScope {
+    var cleanF = sc.clean(f)
+    new MapPartitionsRDD[U, T]
+}
+
+// Transformation: flatMap
+def flatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = withScope {
+    val cleanF = sc.clean(f)
+    new MapPartitionsRDD[U, T](this, (context, pid, iter) => iter.flatMap(cleanF))
+}
+
+// Transformation: filter
+def filter(f: T => Boolean): RDD[T] = withScope {
+    val cleanF = sc.clean(f)
+    new MapPartitionsRDD[T, T](
+        this,
+        (context, pid, iter) => iter.filter(cleanF),
+        preservesPartitioning = true
+    )
+}
+```
+
+RDD 的 Transformation：
+* 是指由一个 RDD 生成新 RDD 的过程
+* 所有的 RDD Transformation 都只是生成了 RDD 之间的计算关系和计算方法，没有进行真正的计算
+* 结合每一个 RDD 的数据和它们之间的依赖关系，每个 RDD 都可以按依赖链追溯它的祖先，这些依赖链接就是 RDD 重建的基础
+
+RDD 依赖关系类型：
+* 窄依赖（NarrowDependency）：依赖上级 RDD 的部分分区
+* Shuflle 依赖（ShuffleDenpendency）：依赖上级 RDD 的所有分区
+
+窄依赖：
+* 使用窄依赖时，可以精确直到依赖的上级 RDD 的分区
+* 一般情况下，会选择与自己在同一节点的上级 RDD 分区，这样计算过程都在同一节点进行，没有网络 IO 开销，非常高效
+* 常见的 map、flatMap、filter 操作都是这一类
+
+Shuffle 依赖：
+* 无法精确定位依赖的上级 RDD 的分区，相当于依赖所有分区
+* 比如 reduceByKey 计算，需要对手游的 key 重新排列
+* 计算式设计所有节点之间的数据传输，开销巨大
+* 以 Shuffle 依赖为分隔，Task 被分为 Stage，方便计算时的管理
+
+检查点：
+* 如果依赖链条太长，通过计算来恢复 RDD 的代价就太大了
+* 对于依赖链条太长的计算，对中间结果存一份快照，这样就不需要从头开始计算了
+* 比如 Spark Streaming 流式计算，程序需要 7*24 小时运行，依赖链接会无穷扩充
+* 如果没有检查点机制，容错将完全没有意义
+
+RDD 的 Action：
+* 代表计算的结束，调用之后不再生成新的 RDD，结果返回到 Driver 程序
+* Transformation 只是建立计算关系，而 Action 才是实际的执行者
+* 每个 Action 都会调用 SparkContext 的runJob 方法向集群正式提交请求，所以每个 Action 对应一个 Job
+* 
+```
+// Action 操作是不可以在 RDD Transformation 内部调用的
+rdd1.map(x => rdd2.values.count() * x)
+
+// 返回 RDD 中的元素数 RDD
+def count(): Long = sc.runJob(this, Utils.getIteratorSize _).sum
+```
+
+Shuffle：
+* 当对一个 RDD 的某个翻去进行操作，而无法精确直到依赖前一个 RDD 的哪些分区时，变成了依赖前一个 RDD 的所有分区
+* 在进行 reduce 操作之前，Spark 可能分布在不同的机器节点上，此时需要先把它们汇聚到一个节点，这个汇聚过程就是 Shuffle
+* Shuffle 非常消耗资源，除了会涉及大量网络 IO 操作并使用大量内存外，还会在磁盘上生成大量临时文件，以避免错误恢复时重新计算
+* Shuffle 操作的结果启示是一次调度的 Stage 的结果，而一次 Stage 包含许多 Task，缓存下来还是很划算的
+
+#### SparkContext
+* Spark 程序最主要的入口，用于与 Spark 集群连接，与 Spark 集群的所有操作都通过 SparkContext 来进行
+* 可以在 Spark 集群上创建 RDD、计数器以及广播变量
+* 所有的 Spark 程序都必须创建一个 SparkContext 对象（关联现有对象或隐式创建一个对象）
+* 每个 JVM 只允许启动一个 SparkCOntext，否则默认会抛出异常，可以用 sc.stop() 方法先停止默认的 sc
+
+SparkContext 功能接口：
+* 初始化环境，连接 Spark 集群
+* 创建 RDD
+* RDD 持久化
+* 创建共享变量：包括计数器和广播变量
+* stop()：停止
+* runJob：提交 RDD Action 操作，这是所有执行调度的入口
+
+DAG 调度：
+* 最高层级的调度
+* 为每个 Job 回执出一个有向无环图（简称 DAG），跟踪各 Stage 的输出，计算完成 Job 的最短路径，并将 Task 提交给 Task 调度器来执行
+* Task 调度器只负责接受 DAG 调度器 的请求，负责 Task 的实际执行调度，所以 DAGScheduler 的初始化必须在 Task 调度器之后
+
+DAG 与Task 分离调度的好处：
+* Spark 可以灵活设计自己的 DAG 调度，同时还能与其他资源调度系统结合，比如 YARN、Mesos
+
+```
+// 1、初始化 SparkContext 对象时，只需要一个 SparkConf 配置对象作为参数即可
+class SparkContext(config: SparkConf)
+def this() = this(new SParkConf())
+
+// 直接设置常用属性
+def this(
+    master: String,  // 集群地址
+    appName: String,  // 程序名
+    sparkHome: String = null,  // Spark 在机器上的安装目录
+    jars: Seq[String] = Nil,  // 给集群添加额外的 Jar 文件集合，可以是本地文件或者是 HDFS 等类型的URL
+    environment: Map[String, String] = Map(),  // 环境变量
+    perferredodeLocationData: Map[String, Set[SplitInfo]] = Map()) = {
+        this(SparkContext.updateConf(new SparkConf(), master, appName, sparkHome, jars, environment))
+        this.preferredNodeLocationData = preferredNodeLocationData
+    }
+)
+
+// 保存配置的 SparkConf 类的定义在相同目录下的 SparkConf.scala 文件中
+private val settings = new COncurrentHashMap[String, String]()
+
+// 所有的配置都以键值对的形式保存在 settings 中，比如设置 Master 方法启示就是设置了配置项 spark.master
+// 所以，使用配置文件中的配置项，或是参数列表中的 --master选项，或是setMaster() 方法都可以，只是优先级不同
+def setMaster(master: String): SparkConf = {
+    set("spark.master", master)
+}
+
+// 2、初始化操作：除了初始化各类配置、日志之外，还要启动 Task 调度器和 DAG 调度器
+// 创建并启动 Task 调度器
+val (sched, ts) = SparkContext.createTaskScheduler(this, master)
+_schedulerBackend = sched
+_taskScheduler = ts
+_dagScheduler = new DagScheduler(this)
+_heartbeatReceiver.send(TaskSchedulerIsSet)
+
+// 创建 DAG 调度器，并引用之前创建的 Task 调度器之后，再启动 Task 调度器
+_taskScheduler.start()
+```
+
+#### DAG 调度
+SparkContext 在初始化时，创建了 DAG 调度和 Task 调度来负责 RDD Action 操作的执行调度
+
+DAGScheduler：
+* 负责 Spark 的最高级别的任务调度，调度的粒度是 Stage
+* 为每个 Job 的所有 Stage 计算一个有向无环图，控制它们的并发，并找到一个最佳路径来执行它们
+* 具体过程是将 Stage 下的 Task 集提交给 TaskScheduler 对象，由它来提交到集群上去申请资源并完成执行
+
+任务处理过程：
+* runJob 调用 summitJob 提交任务
+* submitJob 生成新的 JobId，发送消息 JobSubmitted
+* DAG 收到该消息，调用 handleJobSubmitted 来处理
+* 创建一个 ResultStage，并使用 submitStage 来提交这个 ResultStage
+
+Spark 的执行过程是懒惰（lazy）的：
+* 任务提交时，不是按 Job 的先后顺序提交的，而是倒序的
+* 每个 Job 最后一个操作是 Action 操作
+* DAG 把这最后的操作当做一个 Stage 首先提交，然后逆向逐级递归填补缺少的上级 Stage
+* 从而生成一棵实现最后 Action 操作的最短的（因为都是必须的）有向无环图，然后再重头开始计算
+
+Stage：
+* 仅对依赖类型是 ShuffleDependency 的 RDD 操作创建 Stage，其他的 RDD 操作并没有创建
+* RDD 操作有两类：窄依赖和 Shuffle 依赖
+* DAG 在调度时，对于在相同节点上进行的 Task 计算，会合并为一个 Stage
+* 各 Stage 之间以 Shuffle 为分界线
+
+生成新的 Stage：
+* 依赖类型是 Shuffle 的 Transformation 操作（基于所有的 ByKey 操作都是，比如 reduceByKey 和 groupByKey）
+* Action 操作，为了生成默认的 Stage，这样即使没有 Shuffle 类操作，保证至少有一个 Stage
+
+```
+private[spark]
+class DAGScheduler(
+    private[scheduler] val sc: SparkContext,
+    private[scheduler] val taskScheduler: TaskScheduler,
+    listenerBus: LiveListenerBus,
+    mapOutputTracker: MapOutputTrackerMaster,
+    blockManagerMaster: BlockManagerMaster,
+    env: SparkEnv,
+    clock: Clock = new SystemClock()
+)
+extends Logging {
+    ...
+}
+
+def runJob[T, U](
+    rdd: RDD[T],
+    func: (TaskContext, Iterator[T]) => U,
+    partitions: Seq[Int],
+    callSite: CallSite,
+    allowLocal: Boolean,
+    resultHandler: (Int, U) => Unit,
+    properties: Properties): Unit = {
+        val start = System.nanoTime
+        val waiter = submitJob(rdd, func, partitions, callSite, allowLocal, resultHandler, properties)
+        waiter.awaitResult() match {
+            case JobSucceeded =>
+                logInfo(
+                    "Job %d finished: %s, took %f s".
+                    format(waiter.jobId, callSite.shortForm, (system.nanoTiem-start)/1e9))
+            case JobFailed(exception: Exception) =>
+                logInfo(
+                    "Job %d finished: %s, took %f s".
+                    format(waiter.jobId, callSite.shortForm, (system.nanoTiem-start)/1e9))
+            throw exception
+        }
+    }
+)
+
+private def submitStage(stage: Stage) {
+    val jobId = activeJobForStage(stage)
+    if(jobId.isDefined) {
+        logDebug("submitStage(" + stage + ")")
+        if(!waitingStages(stage) && !runningStages(stage) && !failedStages(stage)) {
+            val missing = getMissingParentStages(stage).sortBy(_.id)
+            logDebug("missing: " + missing)
+            if(missing.isEmpty) {
+                // 仅在所有缺失的父Stage都提交执行了，才开始提交自己
+                logInfo("Submitting " + stage + " (" + stage.rdd + "), which has no missing parents")
+                submitMissingTasks(stage, jobId.get)
+            }
+            else {
+                for (parent <- missing) {
+                    submitStage(parent)
+                }
+                waitingStages += stage
+            }
+        }
+    }
+    else {
+        abortStage(stage, "No active job for stage " + stage.id)
+    }
+}
+
+// 查找上级 Stage 的过程，启示就是递归向上遍历所有 RDD 依赖列表并生成 Stage 的过程
+// 遍历的过程是非递归的层序遍历（不是前序、中序或后序），使用了堆栈来协助遍历，而且保证层序的顺序与 DAG 中的依赖顺序一致
+private def getMissingParentStages(stage: Stage): List[Stage] = {
+    val missing = new HashSet[Stage]
+    val visited = new HashSet[RDD[_]]
+    // 这里手工维护一个堆栈，避免递归访问过程中的栈溢出错误
+    val waitingForVisit = new Stack[RDD[_]]
+    def visit(rdd: RDD[_]) {
+        if(!visited(rdd)) {
+            visited += rdd
+            if(getCacheLocs(rdd).contains(Nil)) {
+                for(dep <- rdd.dependencies) {
+                    dep match {
+                        case shufDep: ShuffleDependency[_, _, _] =>
+                            val mapStage = getShuffleMapStage(shufDep, stage.jobId)
+                            if(!mapStage.isAvailable) {
+                                missing += mapStage
+                            }
+                        case narrowDep: NarrowDependency[_] =>
+                            waitingForVisit.push(narrowDep.rdd)
+                    }
+                }
+            }
+        }
+    }
+    waitingForVisit.push(stage.rdd)
+    while(waitingForVisit.nonEmpty) {
+        visit(waitingFOrVisit.pop())
+    }
+    missing.toList
+}
+
+// TaskScheduler
+// 主要接口包括一个钩子接口（也称 hook，表示定义好之后，不是用户主动调用的）
+def postStartHook() {} // 在初始化完成之后和调度启动之前
+def start(): Unit  // 启动
+def stop(): Unit  // 停止调度
+def submitTasks(taskSet: TaskSet): Unit  // 提交 Task 集
+def cancelTasks(stageId: Int, interruptThread: Bollean)
+```
+
+### 第5章 Spark SQL 与数据仓库
+
+Apache Spark 核心与其他模块之间的关系：
+* Spark SQL
+* Spark Streaming
+* MLlib（机器学习）
+* GraphX（图计算）
+
+Spark SQL 的特点：
+* 性能非常高，得益于 Spark 的基因
+* 使用了基于成本的优化器、列存储、代码生成等技术
+* 可以拓展到上千个计算节点以及数小时的计算能力，并且支持自动容错恢复
+* 提供了传统的 SQL 交互式查询功能，还支持业界标准的 JDBC/ODBC 访问接口，这样很容易实现分布式数据仓库，以及商业智能计算
+* 与 Apache Hive 基本完全兼容，可以像使用 Hive 一样来使用 Spark SQL
+* 提供领域 API，并且提供了专门的数据结构抽象 DataFrame，可以让 Spark 程序轻松进行 SQL 操作
+* 支持 Scala、Java、Python 和 R 这四种编程语言
+* 支持非常多的数据源，包括 Hive、Avro、Parquet、ORC、JSON、JDBC，而且提供了统一的访问形式，使用起来非常方便
+
+```
+// 在 Scala 代码中做 SQL 查询
+sqlContext = HiveContext(sc)
+val df = sqlContext.sql("SELECT * FROM table")
+```
+
+#### Spark SQL 基础
+
+使用 Spark SQL 有两种方式：
+* 作为分布式 SQL 引擎，此时只需要写 SQL 就可以进行计算，不需要复杂的编码，也是最受欢迎的方式
+* 在 Spark 程序中，通过领域 API 的形式来操作数据（被抽象为 DataFrame）
+
+作为分布式引擎，有两种运行方式：
+* JDBC/ODBC Server（在正式环境下建议使用）
+* 使用 Spark SQL 命令行（仅在本地测试时使用）
+
+JDBC/ODBC 服务的部署结构：
+  用户      用户      APP
+   |        |         |
+BeeLine  BeeLine      |
+   |        |         |
+Thrift JDBC/ODBC Server -- DB
+            |
+        Spark 集群
+
+部署步骤：
+* 部署 Spark 集群
+* 部署一个 DB 用于存储数据库元数据
+* 启动一个 JDBC/ODBC Server 作为对外服务的接口
+
+支持的 SQL 语法：
+* Spark SQL 在设计上与 Hive 兼容，是一种“开箱即用”的兼容方式，即可以直接替代 Hive 的角色，但内部实现完全不同
+* 可以直接使用 Hive 的 meta 数据库，语法上也基本完全兼容 HiveQL，不同的地方非常少
+
+Spark SQL 支持绝大部分的 Hive 特性：
+* Hive 查询语句：SELECT/GROUP BY/ORDER BY/CLUSTER BY/SORT BY
+* Hive 运算符：关系运算符/数学运算符/逻辑运算符/复杂类型构造器/数学函数/字符串函数/求交/求并/子查询/抽样/解释/表分区/视图
+* Hive DDL：建表/CTAS/修改表结构
+* Hive 数据类型：支持绝大部分，包括数字类型/字符串类型/二进制类型/布尔类型/日期时间类型/复杂类型
+* 窗口函数
+* 自定义：用户自定义函数（UDF）/用户自定义聚合函数（UDAF）/用户自定义序列化格式（SerDes）
+
+Spark SQL 不支持：
+* Hive 的 bucket 表，使用散列的方式对 Hive 表进行分区
+* Hive 比较隐秘的特性：包括 UNION 类型、Unique join
+* Hive 的优化方法：大部分都不支持，实现机制完全不一样，一些问题可能在 Spark 的内存计算模式下也不是问题
+
+DataFrame：
+* Spark 程序中可以通过编程接口来引用 Spark SQL 模块，编程时使用的数据抽象是 DataFrame
+* 具有与 RDD 类似的分布式数据集特点，但增加了列的概念，可以与传统关系型数据库的表对应起来
+* 与 R 和 Python 中的数据框（dataframe）在概念上也是相同的
+* Spark 程序支持的 Scala、Java、Python、R 这四种编程语言都亏使用 DataFrame
+
+在 Spark 中使用 DataFrame 的过程：
+* 初始化环境：一般是创建一个 SQLContext 对象
+* 创建一个 DataFrame：可以来源于 RDD 或其他数据源
+* 调用 DataFrame 操作：一种领域特定的 API，可以实现所有的 SQL 功能
+* 或者通过函数直接执行 SQL 语句
+
+从 RDD 创建 DataFrame：
+* 用 Scala 反射，代码简洁，但需要提前直到数据格式
+* 程序指定，略复杂，但可以运行时指定
+
+动态从 RDD 创建 DataFrame 的步骤：
+* 从原来的 RDD 创建一个新的 RDD，成员是 Row 类型，包含所有列
+* 创建一个 StructType 类型的表模式，其结构与 Row 结构相匹配
+* 将表模式应用到创建的 RDD 上
+
+```
+// 1、创建 SQLContext：Spark SQL 相关的所有函数，都在 SQLContext 或它的子类中
+val sc: SparkContext  // sc 是已经存在的 SparkContext 实例
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+val sqlContext = new org.apache.spark.sql.hive.HiveContext(sc)  // Hive
+
+// 2、创建 DataFrame
+// 使用反射的方法从 RDD 创建 DataFrame
+import sqlContext.implicits._
+case class Person(name: String, age: Int)  // 定义一个 case class，参数名即为表的列名
+val rdd = sc.textFile("examples/src/main/resources/people.txt").map(_.split(","))  // 从文本创建 RDD
+val rddContainingCaseClass = rdd.map(p => Person(p(0), p(1).trim.toInt))  // RDD 包含 case class
+val people = rddContainingCaseClass.toDF()  // RDD 被隐式转换成 DataFrame
+people.show()  // 将 DataFrame 的内容打印到标准输出
+
+// 使用程序动态从 RDD 创建 DataFrame
+val people = sc.textFile("examples/src/main/resources/people.txt")  // 普通 RDD
+val schemaString = "name age"  // 字符串格式的表模式
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.types.{StructType, StructField, StringType};
+val schema =  // 根据字符串格式的表模式创建结构化的表模式，用 StructType 保存
+    StructType(
+        schemaString.split(" ").map(fieldName => StructField(fieldName, StringType, True))
+    )
+val rowRDD = people.map(_.split(",")).map(p => Row(p(0), p(1).trim))  // 将普通 RDD 的成员转换成 Row 对象
+val peopleDataFrame = sqlContext.createDataFrame(rowRDD, schema)  // 将模式作用到 RDD 上，生成 DataFrame
+people.show()  // 将 DataFrame 的内容打印到标准输出
+
+// 从掐数据源生成 DataFrame
+val df = sqlContext.read.json("examples/src/main/resoures/people.json")  // 从 JSON 格式的文件创建
+df.show()
+
+// 3、DataFrame 操作
+```

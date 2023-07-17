@@ -985,7 +985,7 @@ Spark SQL 的特点：
 * 与 Apache Hive 基本完全兼容，可以像使用 Hive 一样来使用 Spark SQL
 * 提供领域 API，并且提供了专门的数据结构抽象 DataFrame，可以让 Spark 程序轻松进行 SQL 操作
 * 支持 Scala、Java、Python 和 R 这四种编程语言
-* 支持非常多的数据源，包括 Hive、Avro、Parquet、ORC、JSON、JDBC，而且提供了统一的访问形式，使用起来非常方便
+* 支持非常多的数据源，包括 Hive、Avro、Parquet、ORC、JSON、JDBC，而且提供了统一的读写接口，使用起来非常方便
 
 ```
 // 在 Scala 代码中做 SQL 查询
@@ -1083,9 +1083,435 @@ val rowRDD = people.map(_.split(",")).map(p => Row(p(0), p(1).trim))  // 将普�
 val peopleDataFrame = sqlContext.createDataFrame(rowRDD, schema)  // 将模式作用到 RDD 上，生成 DataFrame
 people.show()  // 将 DataFrame 的内容打印到标准输出
 
-// 从掐数据源生成 DataFrame
+// 从其他数据源生成 DataFrame
 val df = sqlContext.read.json("examples/src/main/resoures/people.json")  // 从 JSON 格式的文件创建
 df.show()
 
-// 3、DataFrame 操作
+// 3、DataFrame 操作：通过领域 API 方式访问 DataFrame
+var sc: SparkContext
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+var df = sqlContext.read.json("examples/src/main/resources/people.json")
+df.show() // equals to select * from people
+df.printSchema()  // equals to create table people
+df.select("name")  // equals to select name from people
+df.select(df("name"), df("age")+1).show()  // equals to select name, age+1 from people
+df.filter(df("age") > 21).show  // equals to select * from people where age > 21
+df.groupBy("age").count().show()  // equals to select age, count(*) from people group by age
+
+// 4、执行 SQL：将 DataFrame 注册成表，然后使用纯 SQL 语句的方式来访问
+df.registerTempTable("people")
+val result = sqlContext.sql("SELECTA * FROM people")  // 自带 SQL 解析器
+
+// 也可以换成功能更强大的 HiveQL 解析器
+set spark.sql.dialect=hiveql;
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+var df = sqlContext.read.json("examples/src/main/resources/people.json")
+df.saveAsTable("people")  // 持久化，将表信息保存在数据库中，即使程序退出后，其他进程还可以访问它
+
+// 5、DataFrame 数据源
+// 通过数据源加载数据
+// 默认的类型是 Parquet，这是大数据计算中最常用的列式存储格式，也可以用 format 指定其他类型
+var df = sqlContext.read.load("examples/src/main/resources/users.parquet")
+var df = sqlContext.read.format("json").load("examples/src/main/resources/users.parquet")
+df.select("name", "age").write.save("nameAndFavColors.parquet")
+
+// 保存数据：默认模式（如果文件已存在则报错）、追加模式、覆盖写模式、如果文件存在就放弃写
+df.selct("name, "age").write.save("nameAndFavColors.parquet")
+df.selct("name, "age").write.format("parquet").save("nameAndFavColors.parquet")
+
+// 6、性能调优：使用内存来缓存数据
+sqlContext.cacheTable("tableName")
+sqlContext.uncacheTable("tableName")
+dataFrame.cache()
+spark.sql.inMemoryColumnarStorage.compressed=true  // 开启压缩
+spark.sql.inMemoryColumnarStorate.batchSize  // 增加缓存快大小可以提升内存利用率，但也会增加内存溢出的风险
 ```
+
+#### Spark SQL 原理和运行机制
+
+Spark SQL 发展：
+* 在 Spark 出现之前，基于 Hadoop MR 的 Hive 一致是开源大数据 SQL 计算的唯一选择，但其性能一致被人诟病
+* 基于 Spark 的 SQL 计算框架 Shark：基于 Hive 代码实现，优化和维护很困难，也无法充分利用 Spark 和 Scala 的优势
+* 在 Shark 的基础上，Spark SQL 进行重新开发，语法上尽可能保持与 Hive 兼容，重写了执行优化器 Catalyst
+* 相较于 Shark，Spark SQL 最大的优势是性能，并且 Catalyst 的拓展性也非常好
+
+Spark SQL 整体框架：
+数据源    JDBC/ODBC  Spark SQL CLI  Spark程序/ML
+Parquet      |            |             |
+Hive     Spark SQL                      |
+JSON         |                          |
+JDBC     Spark Core（RDD)
+AVRO
+...
+
+Catalyst 执行过程：
+* 分析阶段：分析逻辑树，解决引用
+* 逻辑优化
+* 物理计划：Catalyst 会生成多个计划，并基于成本进行对比
+* 代码生成：将查询编辑成 Java 字节码
+
+#### 应用场景：基于淘宝数据建立电商数据仓库
+
+传统的数据仓库方案弊端：
+* 成本高
+* 拓展性差
+
+Spark SQL 的特点：
+* 分布式计算
+* 高可拓展性
+* 容错性
+* 支持 JDBC/ODBC
+完全可以作为分布式数据仓库的核心
+
+数据仓库架构：
+* 其他辅助工具、BI工具
+* BeeLine交互式
+* metaDB、JDBC/ODBC Server
+* Spark with Spark SQL
+* Hadoop HDFS
+
+Spark SQL 在大规模数据下的性能表现：
+* Spark 的性能基本上与数据量大小保持线性关系
+* 扩充未来集群的计算能力变得非常简单，只需要增加计算节点即可
+
+### 第6章 Spark 流式计算
+
+流式计算：
+* 需要实时对大量数据进行快速处理，处理周期短，一般是分钟级甚至秒级响应
+* 7*24 小时连续不断进行计算
+* Spark 通过 Spark Streaming 组件提供了支持
+
+Spark Streaming：
+* 基于 Spark 核心，具备可拓展性、高吞吐量、自动容错等特性
+* 数据源：支持 HDFS/S3/NFS、Kafka、Flume、Twitter、Kinesis、MQTT、自定义输入流
+* 数据处理：Spark Streaming 可以使用 map、reduce、join、window 等高级函数来实现复杂逻辑
+* 计算结果：可写入 HDFS、数据库、数据仪表盘
+
+Spark Streaming 计算过程：
+* 输入数据流
+* 按周期将数据分成多批次（batch），按批次提交给 Spark 核心来调度计算
+* 结果按小批次输出
+
+#### Spark Streaming 基础知识
+
+基本概念：
+* StreamingContext：基本环境对象，提供基本的功能入口
+* DStream：表示连续的数据流，Streaming 下的 RDD
+* 输入 DStream：用于从各类数据源接受数据
+* DStream 操作：Transformation 操作和 output 操作
+* 窗口操作：处理最近几个周期的数据，可以设置数据的滑动窗口，将数个原始 DStream 合并成一个窗口 DStream（需设置窗口长度和滑动区间）
+
+高级操作：
+* 持久化：缓存到内存中，调用 persist()，窗口函数和 updateStateByKey 默认会自动持久化，因为数据的确会被多次使用
+* 打包、发布和监控
+* 部署：打包 JAR 包、配置足够的内存、配置检查点、配置 Driver 程序自动重启
+* 更新程序代码：需要重启程序，如果想要在重启过程中不丢失数据，有两种方法，新旧程序同时运行或先停止旧的程序再启动新的程序
+* 监控流式计算程序运行：Web 页面中 Scheduling Delay + Processing Time 加起来就是 Spark Streaming 一次计算周期的总时间
+
+```
+// Spark Streaming 版本的 WordCount
+// 1、启动 TCP socket，在 Linux 下通过 nc 启动，端口为 9999
+nc -lk 9999
+
+// 2、启动 spark-shell
+./bin/spark-shell
+
+// 3、在 spark-shell 中输入代码运行程序
+import org.sapache.spark.SparkConf
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+
+// 指定运行周期为五秒，表示流式计算每间隔五秒执行一次，需要综合考虑程序的延时需求和集群的工作负载，应该大于每次的运行时间
+// 每个 RDD 对应一个计算周期，所有操作都会映射为对内部的 RDD 操作
+val ssc = new StreamingContext(sc, Seconds(5))
+var lines = ssc.socketTextStream("localhost", 9999)  // 创建 DStream
+
+// 基本的操作函数与 RDD 同名
+var words = lines.flatMap(_.split(" "))
+var pairs = words.map(word +> (word, 1))
+val wordCounts = pairs.reduceByKey(_ + _)
+
+// 打印结果到标准输出（只打印 DStream 中每个 RDD 的前十个元素
+// print 不同于 RDD 中的 Action 操作，不会触发真正的调度执行
+wordCounts.print()
+
+// 这里才正式启动计算
+ssc.start()
+
+// 等待执行结束（出错或 Ctrl-C 退出）
+ssc.awaitTermination()
+
+// 4、在前面启动的 nc 客户端中输入文本，就可以看到计算结果了
+```
+
+#### 深入理解 Spark Streaming
+
+DStream 的两类操作：
+* Transformation 操作：对应 RDD 的 Transformation 操作
+* Output 操作：触发 DStream 的实际执行，作用非常类似于 RD 的 Action 操作
+
+一般流式计算过程：
+* 输入数据流：数据接收
+* 数据操作：Transformation 操作
+* 结果输出：Output 操作
+
+两类可能发生的错误：
+* worker 节点失效：一旦计算节点失效，所有内存中的数据都会丢失且无法恢复
+* Driver 节点失效：SparkContext 也会随之失效，整个 Streaming 程序会退出，内存中的数据全部丢失
+
+容错保障的效果：
+* 至多一次：每条记录最多被计算一次，或者根本没有计算就丢失了
+* 到少一次：保证每条记录都不丢失，最少计算一次，但可能会重复多次计算
+* 精准一次：保证每条记录都不丢失，并且只计算一次，不多不少，显然这是最佳的容错保障
+
+结果输出容错：
+* 本身提供至少一次级别的容错性能，但可能通过一些辅助手段来实现精准一次的容错效果
+* 幂等更新：确保多操作的效果与一次操作的效果相同
+* 事务更新：更新时带上事务信息，确保更新只进行一次，实现精准一次的容错效果
+
+检查点：
+* 调用了有状态的 Transformation 操作，必须弃用检查点功能
+* 如果期望程序在因 Driver 节点失效后的重启之后可以继续运行，也建议开启检查点功能，可以记录配置、操作以及未完成批次，方便重启后继续运行
+
+性能调优方向：
+* 减少批处理时间：每个批次的处理时间尽可能短
+* 设置合理批次间隔时间：收到数据后，尽可能快地处理
+
+#### 应用场景：一个类似百度统计的流式实时系统
+
+基于网站的访问日志分析是典型的流式实时计算应用场景：
+* 流量分析：一段时间内用户网站的流量变化趋势，针对不同的 IP 对用户网站的流量进行细分，常见指标是总 PV 和各 IP 的 PV
+* 来源分析：各种搜索殷勤来源给用户网站带来的流量情况，常见指标是搜索引擎、关键词和终端类型的 PV
+* 网站分析：各个页面的访问情况，哪些页面最吸引访客或更容易导致访客流式，从而更有针对性地改善网站质量，常见指标是各页面的 PV
+* 转化分析
+* 安全分析：用来识别 CC 攻击、SQL 注入分析、脱库等
+
+日志实时采集：
+* 一般在 HTTP 服务器收集，比如 Nginx access 日志文件
+* 一个典型的方案是 Nginx 日志文件 + Flume + Kafka + Spark Streaming
+
+具体方案：
+* 接收服务器：用 Nginx，根据负载可以部署多台，数据落地至本地日志文件
+* 每个 Nginx 节点上部署 Flume，使用 tail -f 实时读取 Nginx 日志，发送到 Kafka 集群
+* 专用的 Kafka 集群用户连接实时日志和 Spark 集群
+* Spark Streaming 程序实时消费 Kafka 集群上的数据，实时分析和输出
+* 结果写入 MySQL 数据库
+* 进一步优化：CGI 程序直接发日志消息到 Kafka，节省了写访问日志的磁盘开销
+
+```
+# 我们简单模拟一下数据收集和发送的环节
+# 用一个 Python 脚本随机生成 Nginx 访问日志，并通过脚本的方式自动上传至 HDFS，移动到指定目录
+# Spark Streaming 程序监控 HDFS 目录，自动处理新的文件
+
+# 1、生成 Nginx 访问日志，保存为文件 sample_web_log.py
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+import random
+import time
+
+class WebLogGeneration(object):
+    def __init__(self):
+        self.user_agent_dist = {}  # 浏览器类型和版本
+        self.ip_slice_list = []
+        self.url_path_list = []
+        self.http_refer = []
+        self.search_keyword = []
+    
+    def sample_ip(self):
+        slice = random.sample(self.ip_slice_llist, 4)  # 随机选择 4 个 ip
+        return ".".join([str(item) for item in slice])
+
+    def sample_url(self):
+        return random.sample(self.url_path_list, 1)[0]
+
+    def sample_user_agent(self):
+        dist_uppon = ramdon.uniform(0, 1)
+        return self.user_agent_dist[float('0.1f' % dist_uppon)]
+    
+    # 主要搜索引擎 referrer 参数
+    def sample_refer(self):
+        if random.uniform(0, 1) > 0.2:  # 只有 20% 流量有 refer
+            return "-"
+        
+        refer_str=random.sample(self.http_refer, 1)
+        query_str=random.sample(self.search_keyword, 1)
+        return refer_str[0].format(query=query_str[0])
+
+    def sample_one_log(eslf, count = 3):
+        time_str = time.strftime("%Y-%m-%d %H:%M:%s", time.localtime())
+        while count > 1:
+            query_log = "{ip} - - [{local_time}] \"GET /{url} HTTP/1.1\" 200 0
+                \"{refer}\" \"{user_agent}\" \"-\""
+                .format(ip=self.sample_ip(),
+                        local_time=time_str,
+                        url=self.sample_url(),
+                        refer=self.sample_refer(),
+                        user_agent=self.sample_user_agent())
+            print query_log
+            count = count - 1
+    
+if __name__ == "__main__":
+    web_log_gene = WebLogGeneration()
+    web_log_gene.sample_one_log(random.uniform(30000, 50000))
+
+# 2、调用上面的脚本来随机生成日志，上传至 HDFS，并移动到目标目录
+# !/bin.bash
+
+# HDFS命令
+HDFS="/usr/local/myhadoop/hadoop-2.6.0/bin/hadoop fs"
+
+# 网站日志存放的目录，也是Streaming程序监听的目录
+streaming_dir="/spark/streaming"
+
+# 清空旧数据
+$HDFS -rm "${streaming_dir}" '/tmp/*' > /dev/null 2>&1
+$HDFS -rm "${streaming_dir}" '/*'     > /dev/null 2>&1
+
+# 一直运行
+while [ 1 ]; do
+    ./sample_web_log.py > test.log
+
+    # 给日志加上时间戳，避免重名
+    tmplog="access.`date +'%s'`.log"
+
+    # 先放在临时目录，再move至Streaming程序监控的目录下，确保原子性
+    # 临时目录用的是监控目录的子目录，因为子目录不会被监控
+    $HDFS -put test.log ${streaming_dir}/tmp/$tmplog
+    $HDFS -mv           ${streaming_dir}/tmp/$tmplog ${streaming_dir}/
+
+    echo "`date ="%F %T"` put $tmplog to HDFS secceed"
+    sleep 1
+done
+
+# 日志示例
+# 46.202.124.63 - - [2015-11-26 09:54:27] "GET /view.php HTTP/1.1" 200 0
+# "http://www.google.cn/search?q=hadoop" "Mozilla/5.0 (compatible; MSIE 10.0; Windows
+# NT 6.2; Trident/6.0)" "-"
+
+# 3、Spark Streaming 程序代码
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.{Seconds, StreamngContext}
+
+// 设计计算的周期，单位：秒
+val batch = 10
+
+/*
+ * 这是 bin.spark-shell 交互模式下创建 StreamingContext 的方法
+ * 非交互式请使用下面的方法来创建
+ */
+val ssc = new StreamingContext(sc, Seconds(batch))
+
+/* 
+// 非交互式模式下创建 StreamingContext 的方法
+val conf = new SparkCOnf().setAppName("NgixAnay")
+val ssc = new StreamingContext(conf, Seconds(batch))
+*/
+
+/* 创建输入 DStream，是文本文件目录类型
+ * 本地模式下也可以使用本地文件系统的目录，比如 file:///home/spark/streaming
+ */
+val lines = ssc.textFileStream("hdfs:///spark/streaming")
+
+/*
+ * 下面是统计各项指标，调试时可以只进行部分统计，方便观察结果
+ */
+
+// 1.总PV
+lines.count().print()
+
+// 2.各IP的PV，按PV倒序
+lines.map(line => {(line.split(" ")(0), 1)}).reduceByKey(_ + _).transform(rdd => {
+    rdd.map(ip_pv => (ip_pv._2, ip_pv._1))
+}).print()
+
+// 3.搜索引擎PV
+var refer = lines.map(_.split("\"")(3))
+
+// 先输出搜索引擎和关键词，避免统计搜索关键词时重复统计
+// 输出 (host, query_keys)
+var searchEngineInfo = refer.map(r => {
+    var f = r.split('/')
+    var searchEngines = Map(
+        "www.google.cn" -> "q",
+        "www.yahoo.com" -> "p",
+        "cn.bing.com" -> "q",
+        "www.baidu.com" -> "wd",
+        "www.sougou.com" -> "query"
+    )
+
+    if (f.length > 2) {
+        val host = f(2)
+
+        if (searchEngines.contains(host)) {
+            val query = r.split('?')(1)
+            if (query.length > 0) {
+                val arr_search_q = 
+                    query.split('&').filter(_.indexOf(searchEngines(host)+"=") ==0)
+                if (arr_search_q.length > 0)
+                    (host, arr_search_q(0).split('=')(1))
+                else
+                    (host, "")
+            } else {
+                (host, "")
+            }
+        } else
+            ("", "")
+    } else
+        ("", "")
+})
+
+// 输出搜索引擎PV
+searchEngineInfo.filter(_._1.length > 0).map(p => {(p._1, 1)}).reduceByKey(_ + _).print()
+
+// 4.关键词PV
+searchEngineInfo.filter(_._2.length > 0).map(p => {(p._2, 1)}).reduceByKey(_ + _).print()
+
+// 5.终端类型PV
+// (Andriod, 4281)
+// (Default, 35745)
+// (iPhone, 4348)
+lines.map(_.spllit("\"")(5)).map(agent => {
+    val types = Seq("iPhone", "Android")
+    var r = "Default"
+    for (t <- types) {
+        if (agent.indexOf(t) != -1)
+            r = t
+    }
+    (r, 1)
+}).reduceByKey(_ + _).print()
+
+// 6.各页面PV
+lines.map(line => {(line.split("\"")(1).split(" ")(1), 1)}).reductByKey(_ + _).print()
+
+// 启动计算，等待执行结束（出错或Ctrl+C退出）
+ssc.start()
+ssc.awaitTermination()
+
+// 除了常规的每个固定周期进行一次统计，还可以对连续多个周期的数据进行统计，利用窗口方法实现
+
+// 窗口方法必须配置 checkpoint
+ssc.checkpoint("hdfs://spark/checkpoint")
+
+// 这是常规每10秒一个周期的PV统计
+lines.count().print()
+
+//这是每分钟（连续多个周期）一次的PV统计
+lines.countByWindow(Seconds(batch*6), Seconds(batch*6)).print()
+```
+
+
+### 第7章 Spark 图计算
+
+* 社交网络中人与人之间的关系，用图来表示最合适，顶点表示社交中的人，边则表示人与人之间的关系
+* 图是基础的数据结构，和链表、树不同，它是一种非线性数据结构
+#### Spark GraphX 库简介
+
+#### 应用场景：基于新浪微博数据的社交网络分析
+
+
+### 第8章 Spark MLlib
+
+#### 机器学习简介
+
+#### MLlib 库简介
+
+#### 应用场景：搜索广告点击率预估系统

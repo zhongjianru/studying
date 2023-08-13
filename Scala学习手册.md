@@ -777,7 +777,7 @@ scala> d + 2.721
 
 * 函数简短，命名适当，含义明确
 * 在适当的地方增加注释
-* 向函数增加 Scaladoc 首部u，可以据此生成 API 文档
+* 向函数增加 Scaladoc 首部，可以据此生成 API 文档
 
 ```
 scala> /**
@@ -793,3 +793,226 @@ scala> /**
 
 
 ### 第5章 首类函数
+
+首类函数：
+* 函数不仅能得到声明和调用，还可以作为一个数据类型用在这个语言的任何地方
+* 与其他数据类型一样，可以采用字面量形式创建，而不必指定标识符
+* 可以存储在一个容器中，比如值、变量或数据结构
+* 可以用作为另一个函数的参数或返回值
+
+高阶函数：
+* 接受其他函数作为参数，或者使用函数作为返回值
+* map：将一个或多个项转换为一个新值和/或类型（将计算映射到大量分布式节点上）
+* reduce：取一个函数参数，将一个包含多项的集合归约为一项（归约其结果）
+* 优点：具体如何处理数据将作为实现细节，留给包含这个高阶函数的框架来完成
+
+声明式编程：
+* 要求使用高阶函数或其他机制声明要做的工作，而不手动实现
+
+命令式编程：
+* 与声明式编程相反，需要明确指定操作的逻辑流
+
+函数字面量：
+* 可以存储在函数值和变量中，也可以定义为一个高阶函数调用的一部分
+* 任何接受函数参数类型的地方都可以使用函数字面量
+
+占位符：
+* 函数的显式类型在字面量之外指定
+* 参数最多只使用一次
+
+全函数/偏函数：
+* 正确地支持满足输入参数类型的所有可能的值，则为全函数；否则为偏函数
+* 例如计算平方根，如果入参为负数就无法正常工作，所以是偏函数
+
+#### 函数类型和值
+
+```
+// 定义函数
+scala> def double(x: int): int = x * 2
+
+// 以下两种写法等价
+// 有单个参数的函数类型可以省略小括号，等价于 Int => Int
+scala> val myDouble: (Int) => Int = double
+// 用下划线作为占位符，表示将来的一个函数调用，并且返回一个函数值
+scala> val myDouble = double _
+
+// 将函数值赋给一个新值
+scala> val myDoubleCopy = myDouble
+scala> myDoubleCopy(5)
+res0: Int = 10
+
+// 没有输入的函数类型
+scala> def logStart() = "=" * 50
+scala> val start: () => String = logStart
+scala> println( start() )
+```
+
+#### 高阶函数
+
+```
+// 高阶函数的常见用法：在参数中调用其他函数
+scala> def safeStringOp(s: String, f: String => String) = {
+     |   if (s != null) f(s) else s
+     | }
+scala> def reverser(s: String) = s.reverse
+scala> safeStringOp("Ready", reverser)
+res0: ydaeR
+```
+
+#### 函数字面量
+
+```
+// 定义了一个有类型的输入参数 x 和函数体 (x*2)，共同组成函数字面量
+scala> val doubler = (x: Int) => x * 2
+scala> val doubled = doubler(22)
+
+// 函数字面量实际上就是参数化表达式
+scala> val greeter = (name: String) => s"Hello, $name"
+scala> val hi = greeter("World")
+
+// 定义函数，赋给一个函数值，用函数字面量重新定义
+scala> def max(a: Int, b: Int) = if (a > b) a else b
+scala> val maximize: (Int, Int) => Int = max
+scala> val maximize = (a: Int, b: Int) => if (a > b) a else b
+
+// 在更高阶函数调用中定义函数字面量
+scala> safeStringOp("Ready", s => s.reverse)
+```
+
+#### 占位符语法
+
+```
+// 使用通配符取代命名参数
+scala> var doubler: Int => Int = _ * 2
+
+// 用占位符简化函数字面量写法（上例）
+scala> safeStringOp("Ready", _.reverse)
+
+// 多个占位符会按位置顺序替换输入参数
+scala> def combination(x: Int, y: Int, f: (Int, Int) => Int) = f(x, y)
+scala> combination(23, 12, _ * _)
+res0: Int = 276
+
+// 使用多个占位符会降低代码可读性
+scala> def tripleOp(a: Int, b: Int, c: Int, f: (Int, Int, Int) => Int) = f(a,b,c)
+scala> tripleOp(23, 92, 12, _ * _ + _)
+res1: Int = 2130
+
+// 使用两个类型参数重新定义，分别表示输入类型和返回值类型
+scala> def tripleOp[A,B](a: A, b: A, c: A, f: (A, A, A) => B) = f(a,b,c)
+scala> tripleOp[Int,Int](23, 92, 14, _ * _ + _)
+scala> tripleOp[Int,Double](23, 92, 14, 1.0 * _ / _ / _)
+scala> tripleOp[Int,Boolean](93, 92, 14, _ > _ + _)
+```
+
+#### 部分应用函数和柯里化
+
+```
+// 单个参数表认为是一个单独的函数调用
+// 函数类型为 (Int, Int) => Boolean
+scala> def factorOf(x: Int, y: Int) = y % x == 0
+
+// 这个函数的一个快捷方式，所有参数都不保留
+scala> val f = factorOf _
+scala> val x = f(7, 20)
+x: Boolean = false
+
+// 部分应用函数：保留部分参数，使用通配符代替其中一个参数
+scala> val multipleOf3 = factorOf(3, _: Int)
+val y = multipleOf3(78)
+y: Boolean = true
+
+// 多个参数表的函数可以认为是多个函数的一个链
+// 重写该函数，函数类型为 Int => Int => Boolean
+scala> def factorOf(x: Int)(y: Int) = y % x == 0
+
+// 部分应用函数的更简洁方法：使用有多个参数表的函数
+// 函数柯里化：应用一个参数表中的参数，另一个参数表不应用
+scala> val isEven = factorOf(2) _
+scala> val z = isEven(32)
+```
+
+#### 传名参数
+
+```
+scala> def doubles(x: Int) = {
+     |   println("Now doubling" + x)
+     |   x * 2
+     | }
+
+scala> doubles(5)
+Now doubling 5
+res0: Int = 10
+
+scala> def f(i: Int) = { printl(s"Hello from f($i)"); i }
+
+// 在方法中调用函数值，会输出两次消息，因为调用了两次
+scala> doubles( f(8) )
+Hello from f(8)
+Now doubling 8
+Hello from f(8)
+res1: Int = 16
+```
+
+#### 偏函数
+
+```
+scala> var statusHandler: Int => String = {
+     |   case 200 => "Okay"
+     |   case 400 => "Your Error"
+     |   case 500 => "Our Error"
+     | }
+statusHandler: Int => String = <function1>
+
+// 合法输入
+statusHandler(200)
+
+// 非法输入，尽管入参满足类型，但无法匹配这个偏函数的任何一个 case 模式
+statusHandler(401)
+```
+
+#### 用函数字面量块调用高阶函数
+
+```
+// 例1
+scala> def safeStringOp(s: String)(f: String => String) = {
+     |   if (s != null) f(s) else s
+     | }
+
+scala> val uuid = java.util.UUID.randomUUID.toString
+uuid: String = bfe1ddda-92f6-4c7a-8bfc-f946bdac7bc9
+
+// 更清晰的调用，值参数放在小括号里传入，函数参数作为独立的函数字面量块传入
+scala> val timedUUID = safeStringOp(uuid) { s =>
+     |   val now = System.currentTimeMillis
+     |   val timed = s.take(24) + now
+     |   timed.toUpperCase
+     | }
+timedUUID: String = BFE1DDDA-92F6-4C7A-8BFC-1394546043987
+
+// 例2
+scala> def timer[A](f: => A): A = {
+     |   def now = System.currentTimeMillis
+     |   var start = now; val a = f; val end = now
+     |   println(s"Executed in ${end - start} ms")
+     |   a
+     | }
+timer: [A](f: => A)A
+
+// 表达式块型高阶函数调用：将单独的代码块包围在工具函数中
+scala> val veryRandomAmount = timer {
+     |   util.Random.setSeed(System.currentTimeMillis)
+     |   for (i <- 100000) util.Random.nextDouble
+     |   util.Random.nextDouble
+     | }
+Executed in 13 ms
+veryRandomAmount: Double = 0.5070558765221892
+
+// 好处：
+// 管理数据库事务，即高阶函数打开回话、调用函数参数，然后用一个 commit 或者 rollback 结束事务
+// 重新尝试处理可能的错误，将函数参数调用指定次数，直到不再产生错误
+// 根据局部、全局或外部值（例如一个数据库设置或环境变量）有条件地调用函数参数
+```
+
+### 第6章 常用集合
+

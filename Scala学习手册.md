@@ -965,10 +965,10 @@ scala> var statusHandler: Int => String = {
 statusHandler: Int => String = <function1>
 
 // 合法输入
-statusHandler(200)
+scala> statusHandler(200)
 
 // 非法输入，尽管入参满足类型，但无法匹配这个偏函数的任何一个 case 模式
-statusHandler(401)
+scala> statusHandler(401)
 ```
 
 #### 用函数字面量块调用高阶函数
@@ -1016,3 +1016,133 @@ veryRandomAmount: Double = 0.5070558765221892
 
 ### 第6章 常用集合
 
+#### 列表、集和映射
+
+```
+// 例1
+scala> val numbers = List(32, 95, 24, 21, 17)
+numbers: List[Int] = List(32, 95, 24, 21, 17)
+
+scala> var total = 0; for (i <- numbers) { total += i }
+total: Int = 189
+
+scala> val total = numbers.reduce( (a: Int, b: Int) => a + b )
+total: Int = 189
+
+// 例2
+scala> val colors = List("red", "green", "blue")
+colors: List[String] = List(red, green, blue)
+
+scala> println(s"I have ${colors.size} colors: $colors")
+I have 3 colors: List(red, green, blue)
+
+scala> colors.head
+res0: String = red
+
+scala> colors.tail
+res1: List[String] = List(green, blue)
+
+scala> colors(1)
+res2: String = green
+
+scala> clolrs(2)
+res3: String = blue
+
+scala> for (c <- colors) { println(c) }
+red
+green
+blue
+
+scala> val sizes = colors.map( (c: String) => c.size )
+sizes: List[Int] = List(3, 5, 4)
+
+// 例3
+scala> val unique = Set(10, 20, 30, 20, 20, 10)
+unique: scala.collection.immutable.Set[Int] = Set(10, 20, 30)
+
+scala> val sum = unique.reduce( (a: Int, b: Int) => a + b )
+sum: Int = 60
+
+// 例4
+scala> val colorMap = Map("red" -> 0xFF0000, "green" => 0xFF00, "blue" => 0xFF)
+colorMap: scala.collection.immutable.Map[String,Int] = Map(red -> 16711680, green -> 65280, blue -> 255)
+
+scala> val redRGB = colorMap("red")
+redRGB: Int = 16711680
+
+scala> val cyanRGB = colorMap("green") | colormap("blue")
+cyanRBG: Int = 65535
+
+scala> val hasWhite = colorMap.contains("white")
+hasWhite: Boolean = false
+
+scala> for (pairs <- colorMap) { println(pairs) }
+(red,16711680)
+(green,65280)
+(blue,255)
+```
+
+#### List里有什么？
+
+```
+// 创建 List 或其他类型的集合的标准做法：作为一个函数来调用这个集合，并提供必要的内容
+scala> val colors = List("red", "green", "blue")
+colors: List[String] = List(red, green, blue)
+
+// 可以在集合中存储任何类型的值，比如可以创建一个集合的集合
+scala> val oddsAndEvents = List(List(1, 3, 5), List(2, 4, 6))
+oddsAndEvents: List[List[Int]] = List(List(1, 3, 5), List(2, 4, 6))
+
+// 看上去类似 Map 的 List
+scala> val keyValues = List(('A',65), ('B',66), ('C',67))
+keyValues: List[(Char, Int)] = List(('A',65), ('B',66), ('C',67))
+
+// 访问列表中的单个元素，可以作为一个函数调用这个列表，并提供一个索引号（从0开始）
+scala> val primes = List(2, 3, 5, 7, 11, 13)
+primes: List[Int] = List(2, 3, 5, 7, 11, 13)
+
+scala> val first = primes(0)
+first: Int = 2
+
+scala> val fourth = primes(3)
+fourth: Int = 7
+
+// 表头是列表的第一项，表尾是其余项
+// List 是不可变的递归数据结构，所以列表中的每一项都有表头和越来越短的表尾
+scala> val first = primes.head
+first: Int = 2
+
+scala> val remaining = primes.tail
+remaining: List[Int] = List(3, 5, 7, 11, 13)
+
+// 遍历列表
+scala> val i = primes
+scala> while(! i.isEmpty) { print(i.head + ","); i = i.tail }
+2, 3, 5, 7, 11, 13,
+
+// 更高效地检查列表是否到达末尾，所有列表都有一个 Nil 实例作为终结点
+scala> while(i != Nil) { print(i.head + ","); i = i.tail }
+2, 3, 5, 7, 11, 13,
+
+scala> def visit(i: List[Int]) {
+     |   if (i.size > 0) { print(i.head + ","); visit(i.tail) }
+     | }
+visit: (i: List[Int])Unit
+
+scala> visit(primes)
+2, 3, 5, 7, 11, 13,
+
+// Nil 是 List[Nothing] 的一个单例实例，创建一个空列表，实际上会返回 Nil
+scala> val l: List[Int] = List()
+scala> l == Nil
+res0: Boolean = true
+
+// 不论数据的类型是什么，List 总是以 Nil 结尾
+scala> val m: List[String] = List("a")
+scala> m.head
+res1: String = a
+scala> m.tail == Nil
+res2: Boolean = true
+```
+
+#### Cons操作符

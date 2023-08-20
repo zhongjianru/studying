@@ -1016,6 +1016,21 @@ veryRandomAmount: Double = 0.5070558765221892
 
 ### 第6章 常用集合
 
+核心数据结构：
+* 有序集合 List
+* 无序集合 Map
+* 无序集合 Set
+* 继承于 Iterable 根类型
+* 在创建之后不能改变，不能调整大小也不能改变内容
+* 不可变集合优先于可变集合，这也是函数式编程中的最佳实践，可以提高代码稳定性，在并发代码中使用会更安全
+
+与其他语言中的集合的区别：
+* 支持不可变数据结构和高阶操作
+* 用匿名函数迭代处理或映射集合
+* 确保集合以及匿名函数输入和返回的类型
+* 提供类型安全高阶函数的集合支持声明式编程，能够创建具有表述性的代码，而且几乎没有运行时类型转换错误
+* 集合是一元的（monadic），支持以一种高级、类型安全的方式将操作串联在一起
+
 #### 列表、集和映射
 
 ```
@@ -1085,7 +1100,8 @@ scala> for (pairs <- colorMap) { println(pairs) }
 #### List里有什么？
 
 ```
-// 创建 List 或其他类型的集合的标准做法：作为一个函数来调用这个集合，并提供必要的内容
+// 1、创建 List
+// 标准做法：作为一个函数来调用这个集合，并提供必要的内容
 scala> val colors = List("red", "green", "blue")
 colors: List[String] = List(red, green, blue)
 
@@ -1097,7 +1113,8 @@ oddsAndEvents: List[List[Int]] = List(List(1, 3, 5), List(2, 4, 6))
 scala> val keyValues = List(('A',65), ('B',66), ('C',67))
 keyValues: List[(Char, Int)] = List(('A',65), ('B',66), ('C',67))
 
-// 访问列表中的单个元素，可以作为一个函数调用这个列表，并提供一个索引号（从0开始）
+// 2、访问列表中的单个元素
+// 可以作为一个函数调用这个列表，并提供一个索引号（从0开始）
 scala> val primes = List(2, 3, 5, 7, 11, 13)
 primes: List[Int] = List(2, 3, 5, 7, 11, 13)
 
@@ -1115,21 +1132,22 @@ first: Int = 2
 scala> val remaining = primes.tail
 remaining: List[Int] = List(3, 5, 7, 11, 13)
 
-// 遍历列表
+// 3、遍历列表
+// 使用 while 循环遍历列表
 scala> val i = primes
 scala> while(! i.isEmpty) { print(i.head + ","); i = i.tail }
 2, 3, 5, 7, 11, 13,
 
-// 更高效地检查列表是否到达末尾，所有列表都有一个 Nil 实例作为终结点
-scala> while(i != Nil) { print(i.head + ","); i = i.tail }
-2, 3, 5, 7, 11, 13,
-
+// 使用递归形式遍历列表
 scala> def visit(i: List[Int]) {
      |   if (i.size > 0) { print(i.head + ","); visit(i.tail) }
      | }
 visit: (i: List[Int])Unit
-
 scala> visit(primes)
+2, 3, 5, 7, 11, 13,
+
+// 更高效地检查列表是否到达末尾，所有列表都有一个 Nil 实例作为终结点
+scala> while(i != Nil) { print(i.head + ","); i = i.tail }
 2, 3, 5, 7, 11, 13,
 
 // Nil 是 List[Nothing] 的一个单例实例，创建一个空列表，实际上会返回 Nil
@@ -1143,6 +1161,375 @@ scala> m.head
 res1: String = a
 scala> m.tail == Nil
 res2: Boolean = true
+
+// 4、Cons操作符
+// 使用右结合的 cons(construct的缩写) 操作符来构建列表
+scala> val numbers = 1 :: 2 :: 3 :: Nil
+numbers: List[Int] = List(1, 2, 3)
+
+scala> val first = Nil.::(1)
+first: List[Int] = List(1)
+
+scala> first.tail == Nil
+res0: Boolean = true
+
+// 在现有的列表前面追加一个值，并创建一个新的列表（不可变列表的递归性和可重用性）
+scala> val second = 2 :: first
+second: List[Int] = List(2, 1)
+
+scala> second.tail == first
+res1: Boolean = true
 ```
 
-#### Cons操作符
+#### 列表算术运算
+
+```
+// 为列表追加单个元素（右结合操作符）
+1 :: 2 :: Nil
+
+// 在列表前面追加另一个列表（右结合操作符）
+List(1,2) ::: List(2,3)
+
+// 为列表追加另一个集合
+List(1,2) ++ Set(3,4,3)
+
+// 比较集合类型和内容，如果都相同则返回 true
+List(1,2) == List(1,2)
+
+// 返回不包含重复元素的列表版本
+List(3,5,4,3,4).distinct
+
+// 从列表中删除前 n 个元素（操作符记法，操作参数为 n，没有操作参数时必须使用点记法）
+List('a','b','c','d') drop n
+
+// 从列表返回经过一个 true/false 函数验证的元素
+List(23,8,14,21) filter (_ > 18)
+
+// 将一个列表的列表转换为元素列表（点记法）
+List(List(1,2),List(3,4)).flatten
+
+// 根据一个 true/false 函数的结果，将元素分组为由两个列表组成的一个元组
+List(1,2,3,4,5) partition(_ < 3)
+
+// 逆置列表
+List(1,2,3).reverse
+
+// 返回列表的一部分，从第一个索引到第二个索引（但不包括第二个索引本身）
+List(2,3,5,7) slice (1,3)
+
+// 按给定函数返回的值对列表排序
+List("apple","to") sortBy (_.size)
+
+// 按自然值对列表排序
+List("apple","to").sorted
+
+// 给定一个索引，根据元素位于索引前面还是后面，拆分为由两个列表构成的一个元组
+List(2,3,5,7) splitAt 2
+
+// 从列表中抽取前 n 个元素
+List(2,3,5,7,11,13) take 3
+
+// 将两个列表合并为一个元组列表，每个元组包含两个列表中各个索引的相应元素
+List(1,2) zip List("a","b")
+
+// 高阶函数的例子
+scala> val f = List(23,8,14,21) filter (_ > 18)
+f: List[Int] = Lis(23,21)
+
+scala> val p = List(1,2,3,4,5) partition (_ < 3)
+p: (List[Int], List[Int]) = (List(1,2), List(3,4,5))
+
+scala> val s = List("apple","to") sortBy (_.size)
+s: List[String] = List(to, apple)
+
+// 作用在列表前面（::、drop和take）的操作不会产生性能问题，因为无需遍历列表
+// 反之，作用在列表末尾的操作（+:、dropRight和takeRight），就需要遍历列表，并将内容复制到新列表
+scala> val appended = List(1,2,3,4) := 5
+appended: List[Int] = List(1,2,3,4,5)
+
+scala> val suffix = appended takeRight 3
+suffix: List[Int] = List(3,4,5)
+
+scala> val middle = suffix dropRight 2
+middle: List[Int] = List(3)
+```
+
+#### 映射列表
+
+```
+// 列表映射：将指定函数应用于列表中的每一个元素，再将结果保存到新列表
+scala> List(0,1,0) collect {czse 1 => "ok"}
+res0: List[String] = List(ok)
+
+scala> List("milk,tea") flapMap (_.split(','))
+res1: List[String] = List(milk,tea)
+
+scala> List("milk","tea") map (_.toUpperCase)
+res2: List[String] = List(MILK,TEA)
+```
+
+
+#### 归约列表
+
+```
+// 列表归约：将列表收缩为单个值
+
+// 1、数学归约操作（例如查找一个列表的总和）
+// 查找列表中的最大值
+List(41,59,26).max
+
+// 查找列表中的最小值
+List(41,59,26).min
+
+// 将列表中的数相乘
+List(5,6,7).product
+
+// 对列表中的数求和
+List(5,6,7).sum
+
+// 2、逻辑归约操作（例如确定一个列表是否包含某个给定的元素）
+// 检查列表中是否包含这个元素
+List(34,29,18) contains 29
+
+// 测试列表是否以给定列表开头
+List(0,4,3) startsWith LIst(0)
+
+// 检查列表是否以给定列表结尾
+List(0,4,3) endsWith LIst(4,3)
+
+// 检查谓词是否至少对列表中的一个元素返回true
+List(24,17,32) exists (_ < 18)
+
+// 检查谓词是否对列表中的每个元素都返回true
+List(24,17,32) forall (_ < 18)
+
+// 使用三种不同的写法在一个验证结果列表中搜索false项
+scala> val validations = List(true,true,false,true,true,true)
+validations: List[Boolean] = List(true,true,false,true,true,true)
+
+scala> val valid1 = !(validations contains false)
+scala> val valid2 = validations forall (_ == true)
+scala> val valid3 = validations.exists(_ == false) == false
+
+// 自定义实现列表归约操作
+// 迭代处理一个累加器（accumulator）变量，包含目前为止的当前结果，基于当前元素更新累加器
+scala> def contains(x: Int, l: List[Int]): Boolean = {
+     |   var a: Boolean = false
+     |   for (i <- l) { if (!a) a = (i == x) }
+     |   a
+     | }
+
+scala> val included = contains(19, List(46,19,92))
+included: Boolean = true
+
+// 把 contains 逻辑挪到函数参数中，就可以重用函数，从而支持其他列表归约操作（例如布尔列表）
+scala> def boolReduce(l: List[Int] start: Boolean)(f: (boolean, Int) => Boolean): Boolean = {
+     |   var a = start
+     |   for (i <- l) a = f(a, i)
+     |   a
+     | }
+
+scala> val included = boolReduce(List(46,19,92), false) { (a, i) =>
+     |   if (a) a else (i == 19)
+     | }
+included: Boolean = true
+
+// 进一步改写函数 sum，使它适用于任何类型的列表和从左到右归约操作（使用类型参数会导致代码可读性降低）
+scala> def reduceOp[A,B](l: List[A], start: B)(f: (B, A) => B): B = {
+     |   var a = start
+     |   for (i <- l) a = f(a, i)
+     |   a
+     | }
+
+scala> var included = reduceOp(List(46,19,92), false) { (a, i) =>
+     |   if (a) a else (i == 19)
+     | }
+included: Boolean = true
+
+// 归约函数：求和
+// 使用占位符语法，因为函数参数只访问一次
+scala> val answer = reduceOp(List(11.3,23.5,7.2),0.0)(_ + _)
+answer: Double = 42.0
+
+// 3、列表折叠：根据输入函数归约列表的高级函数
+// 处理顺序：不限定/从左到右/从右到左，分布式系统不限定顺序，其余情况一般从左到右（列表遍历次数更少）
+// 给定起始值和归约函数，归约列表
+List(4,5,6).fold(0)(_ + _)
+
+// 给定起始值和归约函数，从左到右归约列表
+List(4,5,6).foldLeft(0)(_ + _)
+
+// 给定起始值和归约函数，从右到左归约列表
+List(4,5,6).foldRight(0)(_ + _)
+
+// 给定归约函数，从第一个元素开始归约列表
+List(4,5,6).reduce(_ + _)
+
+// 给定归约函数，从第一个元素开始从左到右归约列表
+List(4,5,6).reduceLeft(_ + _)
+
+// 给定归约函数，从第一个元素开始从右到左归约列表
+List(4,5,6).reduceRight(_ + _)
+
+// 给定起始值和归约函数，返回各个累加值的一个列表
+List(4,5,6).scan(0)(_ + _)
+
+// 给定起始值和归约函数，从左到右返回各个累加值的一个列表
+List(4,5,6).scanLeft(0)(_ + _)
+
+// 给定起始值和归约函数，从右到左返回各个累加值的一个列表
+List(4,5,6).scanRight(0)(_ + _)
+
+// 使用列表折叠实现 contains 操作
+scala> val included = List(46,19,92).foldLeft(false) { (a, i) => 
+     |   if (a) a else (i == 19)
+     | }
+included: Boolean = true
+
+// 使用列表折叠实现 sum 操作（reduceLeft 函数使用了列表第一个元素作为起始值，而不是作为一个参数，操作更简短）
+scala> val answer = List(11.3,23.5,7.2).reduceLeft(_ + _)
+answer: Double = 42.0
+```
+
+#### 转换集合
+
+```
+// 1、集合转换操作
+// 作为不可变的集合，List、Map 和 Set 不能由空集合构建，更适合从现有的集合创建
+
+// 使用给定分隔符将一个集合呈现为Set
+List(24,99,104).mkString(", ")
+
+// 将不可变集合转换为可变的集合
+List('f','t').toBuffer
+
+// 将集合转换为列表
+Map("a" → 1, "b" → 2).toList
+
+// 将二元元组的集合转换为映射
+Set(1 → true, 3 → true).toMap
+
+// 将集合转换为Set
+List(2,5,5,3,2).toSet
+
+// 将集合呈现为String，包括集合的类型
+List(2,5,5,3,2).toString
+
+// 2、Java 和 Scala 集合兼容性
+// 由于 Scala 在 JVM 上编译和运行，经常需要与 JDK 以及其他 Java 库进行交互
+scala> import collection.JavaConverters._
+
+// Scala 集合转换为 Java 集合
+List(12,29).asJava
+
+// Java 集合转换为 Scala 集合
+new java.util.ArrayList(5).asScala
+```
+
+#### 使用集合的模式匹配
+
+```
+// 模式匹配是 Scala 的核心特性，可以缩短和简化逻辑，而在其他语言中需要大量代码才能实现这些逻辑
+scala> val statuses = List(500, 404)
+
+// 使用匹配表达式来匹配单个值
+scala> val msg = statuses.head match {
+     |   case x if x < 500 => "okay"
+     |   case _ => "whoah, an error"
+     | }
+msg: String = whoah, an error
+
+// 使用模式哨卫匹配集合中的单个值
+scala> val msg = statuses match {
+     |   case x if x contains(500) => "has error"
+     |   case _ => "okay"
+     | }
+msg: String = has error
+
+// 要匹配整个集合，可以使用一个新集合作为模式
+scala> val msg = statuses match {
+     |   case List(404, 500) => "not found & error"
+     |   case List(500, 404) => "error & not found"
+     |   case List(200, 200) => "okay"
+     |   case _ => "not sure what happened"
+     | }
+msg: String = error & not found
+
+// 使用值绑定在模式哨卫中将值绑定到集合中的一些或所有元素
+scala> val msg = statuses match {
+     |   case List(500, x) => s"Error followed by $x"
+     |   case List(e, x) => s"$e was followed by $x"
+     | }
+msg: String = Error followed by 404
+
+// 作为模式匹配表头和表尾元素
+scala> val head - List('r','g','b') match {
+     |   case x :: xs => x
+     |   case Nil => ' '
+     | }
+head: Char = r
+
+// 元组的模式匹配功能，元组可以支持不同类型的值
+scala> val code = ('h', 204, true) match {
+     |   case (_, _, false) => 501
+     |   case ('c', _, true) => 302
+     |   case ('h', x, true) => x
+     |   case (c, x, true) => {
+     |     println(s"Did not expect code $c")
+     |     x
+     |   }
+     | }
+code Int = 204
+```
+
+
+### 第7章 更多集合
+
+#### 可变集合
+
+```
+// 1、创建一个不可变的映射，然后变换这个映射
+scala> val m = Map("AAPL" -> 597, "MSFT" -> 40)
+m: scala.collection,immutable.Map[String, Int] = Map(AAPL -> 597, MSFT -> 40)
+
+scala> val n = m - "AAPL" + ("GOOG" -> 521)
+n: scala.collection,immutable.Map[String, Int] = Map(MSFT -> 40, GOOG -> 521)
+
+// 2、创建新的可变集合
+// 各类不可变集合的可变类型（不可变集合类会自动增加到当前命名空间，而可变集合类则不会）
+collection.immutable.List -> collection.mutable.Buffer  // 列表
+collection.immutable.Set  -> collection.mutable.Set     // 集
+collection.immutable.Map  -> collection.mutable.Map     // 映射
+
+// 构建一个可变的整数列表（从一个元素开始）
+scala> val nums = collection.mutable.Buffer(1)
+nums: scala.collection.mutable.Buffer[Int] = ArrayBuffer(1)
+
+scala> for (i <- 2 to 10) nums += i
+scala> println(nums)
+Buffer(1,2,3,4,5,6,7,8,9,10)
+
+// 构建一个可变的整数列表（从空集合开始）
+// 需要为新列表指定类型参数，集和映射也类似
+scala> val nums = collection.mutable.Buffer[Int]()
+nums: scala.collection.mutable.Buffer[Int] = ArrayBuffer()
+
+scala> for (i <- 1 to 10) nums += i
+scala> println(nums)
+Buffer(1,2,3,4,5,6,7,8,9,10)
+
+// 把可变的缓冲区转换会不可变的列表
+// 集和映射也类似，对应方法为 toSet 和 toMap
+scala> val l = nums.toList
+l: List[Int] = List(1,2,3,4,5,6,7,8,9,10)
+
+// 3、从不可变集合创建可变集合
+scala> val m = Map("AAPL" -> 597, "MSFT" -> 40)
+m: scala.collection,immutable.Map[String, Int] = Map(AAPL -> 597, MSFT -> 40)
+
+scala> val b = m.toBuffer
+b: scala.collection.mutable.Buffer[(String, Int)] = ArrayBuffer((AAPL,597), (MSFT,40))
+
+scala> b trimStart 1
+scala> b += ("GOOG" -> 521)
+```

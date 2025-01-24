@@ -1530,6 +1530,246 @@ m: scala.collection,immutable.Map[String, Int] = Map(AAPL -> 597, MSFT -> 40)
 scala> val b = m.toBuffer
 b: scala.collection.mutable.Buffer[(String, Int)] = ArrayBuffer((AAPL,597), (MSFT,40))
 
+// 从缓冲区开头删除一项
 scala> b trimStart 1
+
+// 在末尾增加一项
 scala> b += ("GOOG" -> 521)
+res1: b.type = ArrayBuffer((MSFT,40),(GOOG,521))
+
+// 元组缓冲区转换为不可变的映射
+scala> val n = b.toMap
+n:: scala.collection.immutable.Map[String,Int] = Map(MSFT -> 40, GOOG -> 521)
+
+// 向缓冲区中增加一个重复的项
+scala> b += ("GOOG" -> 521)
+res2: b.type = ArrayBuffer((MSFT,40),(GOOG,521),(GOOG,521))
+
+// 转换为列表
+val l = b.toList
+l: List[(String, Int)] = List((MSFT,40),(GOOG,521),(GOOG,521))
+
+// 转换为集（唯一性约束）
+val s = b.toSet
+s: scala.collection.immutable.Set[(String, Int)] = Set((MSFT,40),(GOOG,521))
+
+// 4、使用集合构建器：仅限于生成指定的集合类型，只支持追加操作
+scala> val b = Set.newBuilder[Char]
+scala> b += 'h'
+scala> b ++= List('e','l','l','o')
+scala> val helloSet = b.result
+helloSet: scala.collection.immutable.Set[Char] = Set(h,e,l,o)
+```
+
+#### 数组
+
+```
+// Array：大小固定的可变索引集合（大小不可变，但是内容可变）
+// 不是正式意义上的集合，只是 Java 数组类型的一个包装器，用来保证与 JVM 库和 Java 代码的兼容性
+scala> val colors = Array("red","green","blue")
+colors: Array[String] = Array(red,green,blue)
+
+// 使用索引来改变数组内容
+scala> colors(0) = "purple"
+res0: Array[String] = Array(purple,green,blue)
+
+// 调用 toString 方法进行打印，默认打印类型参数和引用
+scala> println("very purple: " + colors)
+very purple: [java.lang.String]@70cf32e3
+
+// 扫描目录下的所有文件
+scala> val files = new java.io.File(".").listFiles
+files: Array[java.io.file] = Array(./Build.scala, ./Dependencies.scala, ./build.properties, ./JunitXmlSupport.scala, ./Repositories.scala, ./plugins.sbt, ./project, ./SBTInitialization.scala, ./target)
+
+scala> val scala = files map(_.getName) filter(_ endsWith "scala")
+scala: Array[String] = Array(Build.scala, Dependencies.scala, JunitXmlSupport.scala, Repositories.scala, SBTInitialization.scala)
+```
+
+#### Seq和序列
+
+```
+// Seq：所有序列的根序列，可以直接访问元素而无需遍历
+// 作为一个根类型，本身不能序列化，但是可以调用 Seq 来创建 List，是一个创建 List 的快捷方式
+scala> val inks = Seq('C','M','Y','K')
+inks: Seq[Char] = List(C,M,Y,K)
+
+// 序列类型
+Seq         // 所有序列的根序列，List()的快捷方式
+IndexedSeq  // 索引序列的根类型，Vector()的快捷方式
+Vector      // 这一类列表有一个后备Array实例，可以按索引访问
+Range       // 整数范围。动态生成数据
+LinearSeq   // 线性（链表）序列的根类型
+List        // 元素的单链表，需要从头开始访问
+Queue       // 先进先出（FIFO）列表
+Stack       // 后进先出（LIFO）列表
+Stream      // 懒列表。访问元素时才增加相应元素
+String      // 字符集合
+
+// ++和take操作来自Iterable，可以处理字符序列
+// replaceAll是一个java.lang.String操作，作为Scala操作符来调用
+scala> val hi = "Hello, " ++ "worldly" take 12 replaceAll("w","W")
+hi: String = Hello, World
+```
+
+#### Stream
+
+```
+// Stream类型：懒集合，在第一次访问元素时才会把元素增加到集合中（与其他不可变集合相反）
+// 与列表类似，流是递归数据结构，包括一个表头（当前元素）和一个表尾（集合的其余部分）
+
+// 1、使用递归函数构建一个新的流
+scala> def inc(i:: Int): Stream[Int] = Stream.cons(i, inc(i+1))
+inc: (i: Int)Stream[Int]
+
+// 这个流只包含起始值（1），并承诺将来会有其他值（？）
+scala> val s = inc(1)
+s: Stream[Int] = Stream(1, ?)
+
+// 获取流中的元素，并转换为列表
+scala> val l = s.take(5).toList
+l: List[Int] = (1,2,3,4,5)
+
+scala> s
+res0: Stream[Int] = Stream(1,2,3,4,5,?)
+
+// 2、使用cons操作符构建一个新的流
+scala> def inc(head: Int): Stream[Int] = head #:: inc(head+1)
+inc: (head: Int)Stream[Int]
+
+scala> inc(10).take(10).toList
+res1: List[Int] = List(10,11,12,13,14,15,16,17,18,19)
+
+// 3、创建一个有界的流（两个递归函数，分别指定表头和最后一个元素）
+scala> def to(head: Char, end: CHar): Stream[Char] = (head > end) match {
+     |   case true => Stream.empty
+     |   case false => head #:: to((head+1).toChar, end)
+     | }
+to: (head: Char, end: Char)Stream[Char]
+
+// 只返回可用的元素，返回Stream.empty时结束
+scala> val hexChars = to('A','F').take(20).toList
+hexChars: List[Char] = List(A,B,C,D,E,F)
+```
+
+#### 一元集合
+
+```
+// 一元集合：包含的元素不能多于1个
+
+// 1、Option集合：表示一个值的存在或者不存在（Some 或 None）
+// 可以用于替代null值，减少触发异常的可能性，也可以作为构建操作链更安全的方法，确保操作链中只包含有效的值
+
+scala> var x: String = "Indeed"
+scala> var a = Option(x)
+a: Option[String] = Some(Indeed)
+
+scala> x = null
+scala> var b = Option(x)
+b: Option[String] = None
+
+scala> println(s"a is defined? ${a.isDefined}")
+a is defined? true
+
+scala> println(s"b is not defined? ${b.isEmpty}")
+b is not defined? true
+
+scala> def divide(amt: Double, disivor: Double):: Option[Double] = {
+     |   if (divisor == 0) None
+     |   else Option(amt / divisor)
+     | }
+
+scala> var legit = divide(5,2)
+legit: Option[DOuble] = SOme(2.5)
+
+scala> val illegit = divide(3,0)
+illegit: Option[Double] = None
+
+// 安全处理空集合
+scala> val odds = List(1,3,5)
+
+scala> var firstOdd = odds.headOption
+firstOdd: Option[Int] = Some(1)
+
+scala> val evens = oddds filter (_ % 2 == 0)
+scala> val firstEven = evens.headOption
+firstEven: Option[Int] = None
+
+// 返回与谓词函数匹配的第一个元素
+scala> val words t("risible", "scavenger", "gist")
+scala> var uppercase = words find (w => w == w.toUpperCase)
+uppercase: Option[String] = None
+
+scala> val lowercase = words find (w => w == w.toLowerCase)
+losercase: Option[String] = Some(risible)
+
+// 这些操作都是类型安全的，不会导致 null 指针异常
+scala> val filtered = lowercase filter (_ endsWith "ible") map (_.toUpperCase)
+filtered: Option[String] = Some(RISIBLE)
+
+scala> val exactSize = filtered filter (_.size > 15) map (_.size)
+exactSize: Option[Int] = None
+
+// 抽取值的安全操作
+scala> def nextOption = if (util.Random.nextInt > 0) Some(1) else None
+nextOption: Option[Int]
+
+scala> val a = nextOption
+a: Option[Int] = Some(1)
+
+scala> val b = nextOption
+b: Option[Int] = None
+
+scala> nextOption.fold(-1)(x x)
+scala> nextOption getOrElse 5 or nextOption getOrElse { println("error!"); -1 }
+scala> nextOption orElse nexOption
+scala> nextOption match { case Some(x) => x; case None => -1 }
+
+// 2、Try集合：将错误处理转变为集合管理（函数执行成功则返回结果，失败则返回错误）
+// 抛出异常的提示文本消息是可选的
+scala> throw new Exception("No DB connection, exiting...")
+
+// 根据输入条件抛出异常
+scala> def loopAndFail(end: Int, failAt: Int): Int = {
+     |   for (i <- 1 to end) {
+     |     print(s"$i")
+     |     if (i == failAt) throw new Exception("Too many iterations")
+     |   }
+     |   end
+     | }
+
+// 捕获异常
+scala> val t1 = util.Try( loopAndFail(2,3) )
+t1: scala.util.Try[Int] = Success(2)
+
+scala> val t2 = util.Try{ loopAndFail(4,2) }
+t2: scala.utill.Try[Int] = Failure(java.lang.Exception: Too many iterations)
+
+// 处理错误的部分策略
+scala> def nextError = util.Try{ 1 / util.Random.nextInt(2) }
+nextError: scala.util.Try[Int]
+
+scala> val x = nextError
+x: scala.util.Try[Int] = Failure(java.lang.ArithmeticException: / by zero)
+
+scala> val y = nextError
+y: scala.util.Try[Int] = Success(1)
+
+// 使用Try的错误处理方法
+scala> nextError flatMap { _=> nextError }
+scala> nextError foreach(x => println("success!" + x))
+scala> nextError getOrElse 0
+scala> nextError orElse nextError
+scala> nextError.toOption
+scala> nextError map (_ * 2)
+scala> nextError match { case util.Success(x) => x; case util.Failure(error) => -1 }
+scala> nextError // 什么都不做，直接向上返回异常
+
+// 3、Future集合：表示一个可能的值（在并发线程中运行后台任务）
+scala> import concurrent.ExecutionContext.Implicits.global  // global上下文使用Java线程库
+scala> val f = concurrent.Future { println("hi") }  // 先打印hi再打印future
+hi
+f: scala.concurrent.Future[Unit] = scala.concurrent.impl.Promise$DefaultPromise@29852487
+
+// 后台线程睡眠，确保在后台任务运行的同时也能得到future
+scala> val f = 
 ```

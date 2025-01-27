@@ -81,12 +81,12 @@
 * 如果一个消费者失效，群组里的其他消费者可以接管失效消费者的工作
 * 消费者与分区之间的映射称为消费者对分区的所有权关系
 
-![图1-6](./images/kafka/kafka1-6.jpeg "图1-6：消费者群组从主题读取消息")
+![图1-6](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka1-6.jpeg "图1-6：消费者群组从主题读取消息")
 
 **broker**
 * 一台单独的kafka服务器
 * 响应生产者：接收来自生产者的消息，为其设置偏移量，并提交到磁盘保存
-* 响应消费者：对读取分区的请求做出响应，并返回一级钢发布的消息
+* 响应消费者：对读取分区的请求做出响应，并返回已经发布的消息
 * 可以轻松处理数千个分区和每秒百万级的消息量
 
 **集群**
@@ -103,14 +103,16 @@
 **同步副本**
 * 分区的首领肯定是同步副本
 * 跟随者副本满足以下条件才被认为是同步副本
-  保持活跃会话（最近向ZooKeeper发送过心跳）
-  最近从首领副本处复制过最新消息
+  1. 保持活跃会话：最近向ZooKeeper发送过心跳
+  2. 最近从首领副本处复制过最新消息
 
 **不同步副本**
 * 稍有滞后的同步副本，会导致生产者和消费者变慢
-* 如果一个副本变成不同步副本，就不再关心它是否已经收到消息（不影响性能）意味着更小的有效复制系数，停机时丢失数据的风险更大
+* 如果一个副本变成不同步副本
+  1. 不再关心它是否已经收到消息（不影响性能）
+  2. 意味着更小的有效复制系数，停机时丢失数据的风险更大
 
-![图1-7](./images/kafka/kafka1-7.jpeg "图1-7：集群中的分区复制")
+![图1-7](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka1-7.jpeg "图1-7：集群中的分区复制")
 
 **消息保留策略**
 * 策略一：保留一段时间（如7天）
@@ -156,11 +158,11 @@
 * 耦合：生产者和消费者不再紧密耦合，不需要在它们之间建立直连
 * 增减：根据业务需要添加或移除组件，生产者不再关心谁使用数据，也不关心几个消费者
 
-![图1-9](./images/kafka/kafka1-9.jpeg "图1-9：大型数据生态系统")
+![图1-9](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka1-9.jpeg "图1-9：大型数据生态系统")
 
 **Kafka集群**
-![图2-1](./images/kafka/kafka2-1.jpeg "图2-1：Kafka和ZooKeeper")
-![图2-2](./images/kafka/kafka2-2.jpeg "图2-2：一个简单的Kafka集群")
+![图2-1](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka2-1.jpeg "图2-1：Kafka和ZooKeeper")
+![图2-2](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka2-2.jpeg "图2-2：一个简单的Kafka集群")
 
 > **本章总结**
 > * 主题1->分区N->同一群组的消费者N->消息NN
@@ -169,8 +171,8 @@
 
 ### 第3章 Kafka生产者（向Kafka写入数据）
 
-![图3-1](./images/kafka/kafka3-1.jpeg "图3-1：Kafka生产者组件图")
-![图3-2](./images/kafka/kafka3-2.jpeg "图3-2：Kafka生产者内部的发送时间分段序列图")
+![图3-1](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka3-1.jpeg "图3-1：Kafka生产者组件图")
+![图3-2](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka3-2.jpeg "图3-2：Kafka生产者内部的发送时间分段序列图")
 
 **向Kafka发送消息的步骤**
 * 创建对象：目标主题、内容、键、分区、时间戳或标头（键和值需序列化成字节数组来进行传输）
@@ -296,7 +298,7 @@ public class CustomerSerializer implements Serializer<Customer> {
 * 描述Avro数据：用JSON描述模式
 * 新模式：生产者使用了新模式，消费者可以继续处理消息，而无需做任何修改
 
-![图3-3](./images/kafka/kafka3-3.jpeg "图3-3：Avro记录的序列化和反序列化流程图")
+![图3-3](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka3-3.jpeg "图3-3：Avro记录的序列化和反序列化流程图")
 
 ```
 // 模式
@@ -333,11 +335,11 @@ while (true) {
 
 **默认分区器**
 * 键为空
-  消息随机发送给主题的分区，以批次为单位写入
-  分区器使用轮询调度算法，均匀分配消息到各个分区
+  1. 消息随机发送给主题的分区，以批次为单位写入
+  2. 分区器使用轮询调度算法，均匀分配消息到各个分区
 * 键不为空
-  对键进行哈希，根据哈希值把消息映射到特定分区
-  分区数量不变的情况下，同一个键总是被映射到同一个分区，哪怕这个分区不可用
+  1. 对键进行哈希，根据哈希值把消息映射到特定分区
+  2. 分区数量不变的情况下，同一个键总是被映射到同一个分区，哪怕这个分区不可用
 
 **自定义分区器**
 * 避免因为消息键数量不均，导致分区出现存储空间不足、请求缓慢等问题
@@ -385,7 +387,7 @@ public class BananaPartitioner implements partitioner {
 
 ### 第4章 Kafka消费者（从Kafka读取数据）
 
-![图4-5](./images/kafka/kafka4-5.jpeg "图4-5：每个消费者群组都能收到所有消息")
+![图4-5](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka4-5.jpeg "图4-5：每个消费者群组都能收到所有消息")
 
 **消费者和消费者群组**
 * 就像多个生产者可以向相同主题写入消息，多个消费者也可以从同一个主题读取消息
@@ -409,7 +411,7 @@ public class BananaPartitioner implements partitioner {
 * 所有消费者接到通知，停止读取消息，放弃分区所有权
 * 重新加入群组，并获得重新分配后的分区
 
-![图4-6](./images/kafka/kafka4-6.jpeg "图4-6：主动再均衡会撤销分区所有权，暂停消费消息，并重新分配分区")
+![图4-6](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka4-6.jpeg "图4-6：主动再均衡会撤销分区所有权，暂停消费消息，并重新分配分区")
 
 **协作再均衡（增量再均衡）**
 * 消费者群组首领通知部分消费者，将失去部分分区所有权，停止读取分区
@@ -417,7 +419,7 @@ public class BananaPartitioner implements partitioner {
 * 其他消费者继续读取原来的分区
 * 可能需要进行几次迭代，直到达到稳定状态，但是避免了主动再均衡会出现的停顿
 
-![图4-7](./images/kafka/kafka4-7.jpeg "图4-7：协作再均衡只暂停读取被重新分配的分区")
+![图4-7](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka4-7.jpeg "图4-7：协作再均衡只暂停读取被重新分配的分区")
 
 **心跳**
 * 消费者会向群组协调器broker发送心跳
@@ -475,8 +477,8 @@ consumer.subscribe(Pattern.compile("text.*"));  // 订阅多个主题
 * 最后一次提交的偏移量小于客户端处理的最后一条消息偏移量，之间的消息会被重复处理
 * 最后一次提交的偏移量大于客户端处理的最后一条消息偏移量，之间的消息会丢失
 
-![图4-8](./images/kafka/kafka4-8.jpeg "图4-8：重复处理消息")
-![图4-9](./images/kafka/kafka4-9.jpeg "图4-9：两个偏移量之间的消息丢失了")
+![图4-8](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka4-8.jpeg "图4-8：重复处理消息")
+![图4-9](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka4-9.jpeg "图4-9：两个偏移量之间的消息丢失了")
 
 **自动提交偏移量**
 * 按照设置的提交间隔，自动提交poll方法返回的最大偏移量
@@ -678,9 +680,9 @@ if (partitionInfos != null) {
 * 请求对象：发送给任意broker（所有broker都缓存了元数据信息）
 * 目的：客户端获取元数据（比如分区副本、哪个副本是首领）获知该往哪里发送请求
 
-![图6-2](./images/kafka/kafka6-2.jpeg "图6-2：客户端请求路由")
-![图6-3](./images/kafka/kafka6-3.jpeg "图6-3：broker延迟作出响应以便积累足够多的数据")
-![图6-4](./images/kafka/kafka6-4.jpeg "图6-4：消费者只能看到已经被复制给同步副本的消息")
+![图6-2](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-2.jpeg "图6-2：客户端请求路由")
+![图6-3](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-3.jpeg "图6-3：broker延迟作出响应以便积累足够多的数据")
+![图6-4](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-4.jpeg "图6-4：消费者只能看到已经被复制给同步副本的消息")
 
 ---
 
@@ -690,7 +692,7 @@ if (partitionInfos != null) {
 * 机架：相邻broker位于不同机架上，确保机架离线后分区依然可用
 * 目录：新分区总是会被放在分区数量最少的目录（不考虑可用空间和负载，如果有分区特别大的话要注意）
 
-![图6-5](./images/kafka/kafka6-5.jpeg "图6-5：为位于不同机架上的broker分配分区和副本")
+![图6-5](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-5.jpeg "图6-5：为位于不同机架上的broker分配分区和副本")
 
 **分区片段**
 * 分区会分成若干个片段
@@ -708,16 +710,16 @@ if (partitionInfos != null) {
 **主题分区保留策略**
 * `delete`：早于保留时间的旧事件将被删除
 * `compact`：压实，只保留最新状态，不关心历史状态变化
-* 两者组合：超过保留时间的消息江北删除，即使它们的键对应的值是最新的
+* 两者组合：超过保留时间的消息将被删除，即使它们的键对应的值是最新的
 
 **压实工作原理**
 * 干净的部分：之前被压实过的消息，每个键只有一个对应的值，是上次压实后保留的
 * 浑浊的部分：上一次压实之后写入的消息
 * 压实分区：读取分区的浑浊部分，在内存中创建一个map，先读取干净部分再读取浑浊部分
-* 范围：当前的惠东片段不会被压实，只有旧片段里的消息才会被压实
+* 范围：当前的活动片段不会被压实，只有旧片段里的消息才会被压实
 
-![图6-6](./images/kafka/kafka6-6.jpeg "图6-6：包含干净和浑浊部分的分区")
-![图6-7](./images/kafka/kafka6-7.jpeg "图6-7：压实前后的分区片段")
+![图6-6](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-6.jpeg "图6-6：包含干净和浑浊部分的分区")
+![图6-7](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka6-7.jpeg "图6-7：压实前后的分区片段")
 
 
 ### 第7章 可靠的数据传递
@@ -790,13 +792,13 @@ if (partitionInfos != null) {
 * 执行原子多分区写入
 * 同时提交消息偏移量
 
-![图8-1](./images/kafka/kafka8-1.jpeg "图8-1：执行原子多分区写入的事务性生产者")
+![图8-1](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka8-1.jpeg "图8-1：执行原子多分区写入的事务性生产者")
 
 **隔离级别**
 * 读未提交：默认，返回所有记录，包括执行中或已终止的事务的记录
 * 读已提交：返回已成功提交的事务的记录（比读未提交的消费者滞后）
 
-![图8-2](./images/kafka/kafka8-2.jpeg "图8-2：读已提交的消费者比默认隔离级别的消费者滞后")
+![图8-2](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka8-2.jpeg "图8-2：读已提交的消费者比默认隔离级别的消费者滞后")
 
 **事务ID**
 * 一致：重启前后必须保持一致
@@ -807,8 +809,8 @@ if (partitionInfos != null) {
 * 旧方法：将事务ID与分区形成固定映射，保证每个分区总是对应相同的事务ID
 * 新方法：基于消费者群组元数据的隔离方法，调用生产者的偏移量提交方法时，将消费者群组元数据传给它
 
-![图8-3](./images/kafka/kafka8-3.jpeg "图8-3：事务性消息处理器")
-![图8-4](./images/kafka/kafka8-4.jpeg "图8-4：发生再均衡之后的事务性消息处理器")
+![图8-3](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka8-3.jpeg "图8-3：事务性消息处理器")
+![图8-4](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka8-4.jpeg "图8-4：发生再均衡之后的事务性消息处理器")
 
 
 ### 第9章 构建数据管道
@@ -832,23 +834,23 @@ if (partitionInfos != null) {
 * 主备架构：将主集群数据镜像到备集群上，不需要操心如何访问数据和处理冲突
 
 **星型架构**
-![图10-1](./images/kafka/kafka10-1.jpeg "图10-1：星型架构")
+![图10-1](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-1.jpeg "图10-1：星型架构")
 
 **双活架构**
-![图10-3](./images/kafka/kafka10-3.jpeg "图10-3：双活架构")
+![图10-3](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-3.jpeg "图10-3：双活架构")
 
 **主备架构**
-![图10-4](./images/kafka/kafka10-4.jpeg "图10-4：主备架构")
+![图10-4](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-4.jpeg "图10-4：主备架构")
 
 **故障转移导致偏移量找不到匹配的记录，需要接受一定程度的数据重复**
-![图10-5](./images/kafka/kafka10-5.jpeg)
+![图10-5](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-5.jpeg)
 
 **多集群镜像解决方案：MirrorMaker**
-![图10-6](./images/kafka/kafka10-6.jpeg)
-![图10-7](./images/kafka/kafka10-7.jpeg)
+![图10-6](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-6.jpeg)
+![图10-7](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka10-7.jpeg)
 
 
 ### 第11章 保护Kafka
 
 **数据在Kafka集群中流动**
-![图11-1](./images/kafka/kafka11-1.jpeg)
+![图11-1](https://raw.githubusercontent.com/zhongjianru/studying/master/images/kafka/kafka11-1.jpeg)

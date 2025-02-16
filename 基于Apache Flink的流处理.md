@@ -12,10 +12,7 @@
 - [补充：FlinkSQL入门与实践](https://cloud.tencent.com/developer/article/1455860)
 - [补充：[实时join]双流Join在不同层级的实现](https://blog.csdn.net/u011076848/article/details/124242146)
 - [补充：[离线join]Hive关联优化方法](https://www.cnblogs.com/erlou96/p/13599964.html)
-- [补充：[算法]基础](https://www.hello-algo.com/chapter_hello_algo/)
-- [补充：[算法]刷题](https://labuladong.online/algo/intro/core-intro/)
-- [补充：[面试]海量数据处理](https://cloud.tencent.com/developer/article/1064552)
-- [补充：[面试]海量数据去重](https://mp.weixin.qq.com/s/thriUUSWMnHsx3sU2Og_LA)
+
 
 **Flink编程接口层级**
 * `SQL API`：构建在`Table`之上，更专注业务本身而不是复杂的编程接口
@@ -64,7 +61,7 @@ FROM TABLE(HOP(TABLE Bid, DESCRIPTOR(bidtime), INTERVAL '5' MINUTES, INTERVAL '1
 
 // 3、累计窗口：CUMULATE(表名,时间字段,窗口步长,窗口大小,可选窗口偏移)
 // 窗口大小为10分钟，每2分钟累计一次
-FROM TABLE(HOP(TABLE Bid, DESCRIPTOR(bidtime), INTERVAL '2' MINUTES, INTERVAL '10' MINUTES))
+FROM TABLE(CUMULATE(TABLE Bid, DESCRIPTOR(bidtime), INTERVAL '2' MINUTES, INTERVAL '10' MINUTES))
 
 // 三种关联方式，优先级从上到下，根据数据特点选择
 // 1、REGULAR JOIN：基于无界数据进行关联
@@ -126,7 +123,7 @@ import org.apache.flink.table.api.Expression.$
 
 case class Event(User: String, url: String, timeLength: Long)  // 样例类，定义表字段
 object SimpleTableExample {
-    def main(agrs: Array[String]): Unit = {
+    def main(args: Array[String]): Unit = {
         // 一、DataStreamAPI：输入流->表->输出流（借助数据流操作）
         // 1、读取（Source）
         val env = StreamExecutionEnvironment.getExecutionEnvironment  // 执行环境
@@ -404,13 +401,13 @@ object SimpleTableExample {
 * 为了生成结果，函数会在一段时间或基于一定个数的事件来累积状态
 * 有状态算子同时使用传入的事件和内部状态来计算输出
 
-**旧的事件流处理方法**
+**旧的事件流处理方法（Spark Streaming微批）**
 * 将到来事件分成小批次，然后不停地在批处理系统上调度并运行作业
 * 每当一个作业结束，其结果都会写入持久化存储中，同时所有算子的状态将不复存在
 * 一旦某个作业被调度到下个批次上执行，它将无法访问之前的状态
 * 通常的解决方案是将状态管理交由某个外部系统（如数据库）完成，但会引入额外延迟
 
-**持续运行的流式作业**
+**持续运行的流式作业（Flink）**
 * 每次处理事件所用到的状态都是持久化的
 * 必须小心避免内部状态无限增长，算子通常都会只保留到目前为止所见事件的摘要或概览（数量值、累加值等）
 
@@ -464,7 +461,7 @@ object SimpleTableExample {
 
 **Flink组件**
 * JobManager
-* Resourcemanager
+* ResourceManager
 * TaskManager
 * Dispatcher
 
@@ -901,7 +898,7 @@ val keyedConnect2: ConnectedStreams[(Int, Long), (int, String)] = one
   .keyBy(0)
   .connect(two.keyBy(0))
 // 利用广播联结数据流
-// 所有广播流的事件都会被复制多份，并发往后续处理寒素所在算子的每个实例
+// 所有广播流的事件都会被复制多份，并发往后续处理元素所在算子的每个实例
 // 非广播流的事件只是会被简单地转发
 val keyedConnect: ConnectedStreams[(Int, Long), (int, String)] = one
   .connect(two.broadcast())  // 将第二条输入流广播
@@ -936,7 +933,7 @@ object myPartitioner extends Partitioner[Int] {
 **设置并行度**
 * 执行环境级别：根据应用启动时所处的上下文自动初始化
 * 单个算子级别：默认为应用执行环境的并行度
-* 最佳做法：将算子并行度设置为随环境默认并行度变化的值，这样可以通过提价客户端来轻易调整并行度，从而实现应用的扩缩容
+* 最佳做法：将算子并行度设置为随环境默认并行度变化的值，这样可以通过提交客户端来轻易调整并行度，从而实现应用的扩缩容
 ```
 // 获取执行环境
 val env = StreamExecutionEnvironment.getExecutionEnvironment
@@ -1257,11 +1254,11 @@ class PunctuatedAssigner extends AssignerWithPunctuatedWatermarks[SensorReading]
 
 **计时器**
 * 只允许在按键值分区的数据流上注册
-  如果需要在非键值分区的数据流上使用计时器，可以通过在KeySelector中返回一个常数键值来创建一条键值分区数据流，该操作会使所有数据发送到单个任务上，从而强制算子以并行度1来执行
+  - 如果需要在非键值分区的数据流上使用计时器，可以通过在KeySelector中返回一个常数键值来创建一条键值分区数据流，该操作会使所有数据发送到单个任务上，从而强制算子以并行度1来执行
 * 对于每个键值和时间戳只能注册一个计时器
-  每个键值可以有多个计时器，但具体到每个时间戳就只能有一个
+  - 每个键值可以有多个计时器，但具体到每个时间戳就只能有一个
 * 所有计时器会和其他状态一起写入检查点（异步）
-  建议不要使用太多计时器，以避免检查点生成时间过久
+  - 建议不要使用太多计时器，以避免检查点生成时间过久
 
 **窗口算子**
 * 窗口：在无限数据流上基于有界区间实现聚合等转换
@@ -1277,7 +1274,7 @@ class PunctuatedAssigner extends AssignerWithPunctuatedWatermarks[SensorReading]
 * 常见的窗口使用场景
 * 提供默认的触发器，时间戳超过窗口的结束时间就触发窗口计算
 * 窗口类型为TimeWindow，表示两个时间戳之间的时间区间（左闭右开）
-* 对外提供了获取窗口边界、检查窗口是否香蕉以及合并重叠窗口等方法
+* 对外提供了获取窗口边界、检查窗口是否相交以及合并重叠窗口等方法
 
 **窗口类型**
 * 基于时间的窗口：事件时间，处理时间

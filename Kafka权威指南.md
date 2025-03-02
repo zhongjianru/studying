@@ -199,7 +199,7 @@
 ```
 // 创建生产者
 Properties props = new Properties();
-props.put("bootstrap.servers", "broker1:9092,broker2:9092");  // brokder地址
+props.put("bootstrap.servers", "broker1:9092,broker2:9092");  // broker地址
 props.put("key.serializer", "org.apache.kafka.common.serializetion.StringSerializer");  // 键序列化器
 props.put("value.serializer", "org.apache.kafka.common.serializetion.StringSerializer");  // 值序列化器
 KafkaProducer<String, String> producer = new KafkaProducer<String, String>(props);  // 生产者

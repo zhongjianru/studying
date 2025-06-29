@@ -103,17 +103,71 @@ ROWS BETWEEN 10 PRECEDING AND CURRENT ROW
 // RANGE间隔：定义排序列的间隔（前面的ORDER BY子句）
 RANGE BETWEEN INTERVAL '30' MINUTES PRECEDING AND CURRENT ROW
 
-// 建表
-CREATE TABLE Orders_with_watermark (
-    `user` BIGINT,
-    product STRING,
-    order_time TIMESTAMP(3),
-    WATERMARK FOR order_time AS order_time - INTERVAL '5' SECOND  -- 水位线
+// 项目配置和建表：FlinkSQL可以通过连接器直接对接Kafka，将Kafka Topic作为Source或Sink使用
+// 0、项目依赖
+<!-- Flink Kafka Connector -->
+<dependency>
+    <groupId>org.apache.flink</groupId>
+    <artifactId>flink-connector-kafka_${scala.version}</artifactId>
+    <version>${flink.version}</version>
+</dependency>
+<!-- JSON 格式支持 -->
+<dependency>
+    <groupId>org.apache.flink</groupId>
+    <artifactId>flink-json</artifactId>
+    <version>${flink.version}</version>
+</dependency>
+
+// 1、Kafka Source表
+CREATE TABLE kafka_source (
+    -- 字段定义（与 Kafka 消息格式匹配）
+    user_id STRING,
+    amount DOUBLE,
+    transaction_time TIMESTAMP(3),
+    proc_time AS PROCTIME(),  -- 定义处理时间（可选）
+    WATERMARK FOR transaction_time AS transaction_time - INTERVAL '5' SECOND  -- 定义事件时间及Watermark
 )
 WITH (
-    'connector' = 'kafka',  -- 读取消息
-    'scan.startup.mode' = 'latest-offset'
+    'connector' = 'kafka',  -- 连接器类型
+    'topic' = 'input_topic',  -- 消息主题
+    'properties.bootstrap.servers' = 'kafka-broker1:9092,kafka-broker2:9092',  -- broker地址列表
+    'properties.group.id' = 'flink-group',  -- 消费者组
+    'format' = 'json',  -- 数据格式：JSON/Avro/CSV等
+    'scan.startup.mode' = 'latest-offset'  -- 消费起始位点：从最早/从最新
 );
+
+// 2、Kafka Sink表
+CREATE TABLE kafka_sink (
+    user_id STRING,
+    total_amount DOUBLE,
+    window_end TIMESTAMP(3)
+)
+WITH (
+    'connector' = 'kafka',
+    'topic' = 'output_topic',
+    'properties.bootstrap.servers' = 'kafka-broker1:9092,kafka-broker2:9092',
+    'format' = 'json',
+    'sink.delivery-guarantee' = 'exactly-once',  -- 写入语义：exactly-once需开启Kafka事务
+    'sink.transactional-id-prefix' = 'txn-'  -- 事务ID前缀：用于exactly-once
+);
+
+// 3、FlinkSQL处理逻辑
+// 示例：统计每用户最近5分钟的累计交易金额
+INSERT INTO kafka_sink
+SELECT
+    user_id,
+    SUM(amount) AS total_amount,
+    TUMBLE_END(transaction_time, INTERVAL '5' MINUTE) AS window_end
+FROM kafka_source
+GROUP BY
+    user_id,
+    TUMBLE(transaction_time, INTERVAL '5' MINUTE);
+
+// 4、提交Flink作业（Java示例）
+EnvironmentSettings settings = EnvironmentSettings.inStreamingMode();
+TableEnvironment tableEnv = TableEnvironment.create(settings);
+tableEnv.executeSql("CREATE TABLE ...");  // 替换为 DDL
+tableEnv.executeSql("INSERT INTO kafka_sink SELECT ...");
 
 // 二、DataStreamAPI & TableAPI
 import org.apache.flink.streaming.api.scala._

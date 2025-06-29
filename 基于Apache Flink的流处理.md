@@ -151,7 +151,7 @@ object SimpleTableExample {
     }
 }
 
-// 三、DataSet API
+// 三、DataSet API：数据批处理
 public class WordCountExample {
     public static void main(String[] args) throws Exception {
         final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();

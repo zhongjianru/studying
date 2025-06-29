@@ -124,7 +124,7 @@ import org.apache.flink.table.api.Expression.$
 case class Event(User: String, url: String, timeLength: Long)  // 样例类，定义表字段
 object SimpleTableExample {
     def main(args: Array[String]): Unit = {
-        // 一、DataStreamAPI：输入流->表->输出流（借助数据流操作）
+        // 一、DataStream API：输入流->表->输出流（借助数据流操作）
         // 1、读取（Source）
         val env = StreamExecutionEnvironment.getExecutionEnvironment  // 执行环境
         val eventStream = env.fromElements(Event("Alice","./home",1000L))  // 输入流
@@ -148,6 +148,29 @@ object SimpleTableExample {
         val table = tableEnv.sqlQuery("SELECT ... FROM inputTable")
         val table = tableEnv.from("inputTable").select(...)  // 两种写法等价
         val tableResult = table.executeInsert("outputTable")  // 将结果写入输出表
+    }
+}
+
+// 三、DataSet API
+public class WordCountExample {
+    public static void main(String[] args) throws Exception {
+        final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+        DataSet<String> text = env.fromElements(
+            "Who's there?", "I think I hear them. Stand, ho! Who's there?"
+        );
+        DataSet<Tuple2<String, Integer>> wordCounts = text
+            .flatMap(new LineSplitter())
+            .groupBy(0)
+            .sum(1);
+        wordCounts.print();
+    }
+    public static class LineSplitter implements FlatMapFunction<String, Tuple2<String, Integer>> {
+        @Override
+        public void flatMap(String line, Collector<Tuple2<String, Integer>> out) {
+            for (String word : line.split(" ")) {
+                out.collect(new Tuple2<>(word, 1));
+            }
+        }
     }
 }
 ```
